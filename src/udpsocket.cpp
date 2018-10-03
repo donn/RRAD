@@ -1,6 +1,5 @@
 // Project
-#include "udpsocket.hpp"
-#include "common.hpp"
+#include "UDPSocket.h"
 
 // C STD
 #include <cstring>
@@ -14,7 +13,7 @@
 #include <pthread.h>
 #include <arpa/inet.h> 
 
-void UDPSocket::initializeSocket(std::string _myAddress, int _myPort) {
+void RRAD::UDPSocket::initializeSocket(std::string _myAddress, int _myPort) {
 	myAddress = _myAddress;
 	myPort = _myPort;
 
@@ -38,17 +37,17 @@ void UDPSocket::initializeSocket(std::string _myAddress, int _myPort) {
     std::cout << "Bound to receive from" << myAddress << ":" << myPort << std::endl;
 }
 
-UDPSocket::UDPSocket(std::string _myAddress, int _myPort) {
+RRAD::UDPSocket::UDPSocket(std::string _myAddress, int _myPort) {
 	initializeSocket(_myAddress, _myPort);
 }
 
-UDPSocket::UDPSocket() {
+RRAD::UDPSocket::UDPSocket() {
 	initializeSocket("0.0.0.0", 0);
 }
 
 /*
 
-bool UDPSocket::initializeClient(char * _peerAddr, int _peerPort) {
+bool RRAD::UDPSocket::initializeClient(char * _peerAddr, int _peerPort) {
 
     peerPort = _peerPort;
 
@@ -72,16 +71,16 @@ bool UDPSocket::initializeClient(char * _peerAddr, int _peerPort) {
 */
 
 
-char *UDPSocket::getFilterAddress() {
+char *RRAD::UDPSocket::getFilterAddress() {
     return NULL;
 }
 
-void UDPSocket::setFilterAddress (char * _filterAddress) {
+void RRAD::UDPSocket::setFilterAddress (char * _filterAddress) {
     
 }
 
 //negative return values indicate failures
-int UDPSocket::writeToSocket(char * buffer,  int maxBytes ) {
+int RRAD::UDPSocket::writeToSocket(char * buffer,  int maxBytes ) {
 	if (maxBytes > MESSAGE_LENGTH){
 		std::cerr << "Message size should be less than " << MESSAGE_LENGTH << " bytes\n";
 		return -1;
@@ -99,7 +98,7 @@ int UDPSocket::writeToSocket(char * buffer,  int maxBytes ) {
 	return ret_val;
 }
 
-int UDPSocket::writeToSocketAndWait(char * buffer, int  maxBytes,int microSec ) {
+int RRAD::UDPSocket::writeToSocketAndWait(char * buffer, int  maxBytes,int microSec ) {
 	if (maxBytes > MESSAGE_LENGTH){
 		std::cerr << "Message size should be less than " << MESSAGE_LENGTH << " bytes\n";
 		return -1;
@@ -110,7 +109,7 @@ int UDPSocket::writeToSocketAndWait(char * buffer, int  maxBytes,int microSec ) 
     return ret_val;
 }
 
-int UDPSocket::readFromSocketBasic(char * buffer,  int maxBytes ) {
+int RRAD::UDPSocket::readFromSocketBasic(char * buffer,  int maxBytes ) {
 	int leng = sizeof(sockaddr_in);
 	int ret_val = recvfrom(sock, buffer, maxBytes, 0, peerAddr_cast, (socklen_t *)&leng);
 	if (ret_val < 0){
@@ -132,11 +131,11 @@ int UDPSocket::readFromSocketBasic(char * buffer,  int maxBytes ) {
 	return ret_val;
 }
 
-int UDPSocket::readFromSocketWithNoBlock(char * buffer, int  maxBytes ) {
+int RRAD::UDPSocket::readFromSocketWithNoBlock(char * buffer, int  maxBytes ) {
     return -1;
 }
 
-int UDPSocket::readFromSocketWithTimeout(char * buffer, int maxBytes, int timeoutSec, int timeoutMilli) {
+int RRAD::UDPSocket::readFromSocketWithTimeout(char * buffer, int maxBytes, int timeoutSec, int timeoutMilli) {
 	struct timeval timeout_dur;
 	timeout_dur.tv_sec = timeoutSec;
 	timeout_dur.tv_usec = timeoutMilli*1000;
@@ -153,55 +152,55 @@ int UDPSocket::readFromSocketWithTimeout(char * buffer, int maxBytes, int timeou
 }
 
 //size of receiced data
-int UDPSocket::readFromSocketWithBlock(char * buffer,  int maxBytes ) {
+int RRAD::UDPSocket::readFromSocketWithBlock(char * buffer,  int maxBytes ) {
 	return readFromSocketBasic(buffer, maxBytes);
 }
 
-int UDPSocket::readSocketWithNoBlock(char * buffer, int  maxBytes ) {
+int RRAD::UDPSocket::readSocketWithNoBlock(char * buffer, int  maxBytes ) {
     return -1;
 }
 
-int UDPSocket::readSocketWithTimeout(char * buffer, int maxBytes, int timeoutSec, int timeoutMilli) {
+int RRAD::UDPSocket::readSocketWithTimeout(char * buffer, int maxBytes, int timeoutSec, int timeoutMilli) {
     return -1;
 }
 
-int UDPSocket::readSocketWithBlock(char * buffer,  int maxBytes) {
+int RRAD::UDPSocket::readSocketWithBlock(char * buffer,  int maxBytes) {
     return -1;
 }
 
-int UDPSocket::getMyPort() {
+int RRAD::UDPSocket::getMyPort() {
     return myPort;
 }
 
-int UDPSocket::getPeerPort() {
+int RRAD::UDPSocket::getPeerPort() {
     return peerPort;
 }
 
-void UDPSocket::enable() {
+void RRAD::UDPSocket::enable() {
     enabled = true;
 }
 
-void UDPSocket::disable() {
+void RRAD::UDPSocket::disable() {
     enabled = false;
 }
 
-bool UDPSocket::isEnabled() {
+bool RRAD::UDPSocket::isEnabled() {
     return enabled;
 }
 
-void UDPSocket::lock() {
+void RRAD::UDPSocket::lock() {
     pthread_mutex_lock(&mutex);
 }
 
-void UDPSocket::unlock() {
+void RRAD::UDPSocket::unlock() {
     pthread_mutex_unlock(&mutex);
 }
 
-int UDPSocket::getSocketHandler() {
+int RRAD::UDPSocket::getSocketHandler() {
     return sock;
 }
 
-UDPSocket::~UDPSocket() {
+RRAD::UDPSocket::~UDPSocket() {
     //pthread_mutex_unlock(&mutex);
     if (sock > 0) {
         close(sock);

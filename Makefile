@@ -23,7 +23,7 @@ release: $(LIB)
 
 $(OBJECTS): build/%.o : %.cpp $(HEADERS)
 	@mkdir -p $(@D)
-	@$(CXX) $(FLAGS) -c -o $@ $<
+	@$(CXX) -Iinclude $(CXX_FLAGS) -c -o $@ $<
 
 $(LIB): $(OBJECTS)
 	@$(CXX) $(LINKER_FLAGS) -o $@ $^
