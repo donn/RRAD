@@ -11,6 +11,7 @@
         "typeinfo": "cpp",
         "algorithm": "cpp",
         "functional": "cpp",
-        "iosfwd": "cpp"
+        "iosfwd": "cpp",
+        "istream": "cpp"
     }
 }

@@ -1,5 +1,5 @@
 CXX= c++
-CXX_FLAGS= -pedantic -g -std=c++14
+CXX_FLAGS= -pedantic -g -std=c++17
 LINKER_FLAGS = -fPIC -shared
 
 SRC_DIR = src

@@ -20,7 +20,7 @@ std::vector<uint8> RRAD::Connection::read() {
     while (packet.seq() != 0xFFFF && packet.ack() != 0xFFFF) {
         assembled.insert(std::end(assembled), std::begin(data), std::end(data));
         data = socket.read(timeout);
-        packet = Packet(data);
+        packet = Packet::unmarshalling(data);
         socket.write(packet.acknowledge().raw());
     }
     return assembled;
@@ -32,6 +32,8 @@ void RRAD::Connection::write(std::vector<uint8> data) {
         transmissions += 1;
     }
     std::vector<uint8> sendable;
+    std::optional<Packet> lastPacket = std::nullopt;
+    
     for (int i = 0; i < transmissions; i += 1) {
         std::vector<uint8>::const_iterator beginning = data.begin() + i * 1024;
         std::vector<uint8>::const_iterator end = data.begin() + (i + 1) * 1024;
@@ -39,7 +41,15 @@ void RRAD::Connection::write(std::vector<uint8> data) {
             end = data.end();
         }
         sendable = std::vector<uint8>(beginning, end);
-        // TO-DO: Sending
+        Packet newPacket = Packet(sendable, lastPacket);
+        socket.write(newPacket.raw());
+        
+        Packet acknowledgement = Packet::unmarshalling(socket.read(timeout));
+        bool confirmedAcknowledgement = newPacket.confirmAcknowledgement(acknowledgement);
+        if (!confirmedAcknowledgement) {
+            throw "Out of order.";
+        }
+        lastPacket = newPacket;
     }
 }
 
@@ -56,7 +66,7 @@ void RRAD::Connection::listen(std::function<void(Connection, std::vector<uint8>)
 
         Packet packet;
         try {
-            packet = Packet(data);
+            packet = Packet::unmarshalling(data);
         } catch (std::exception& exception) {
             std::cerr << "Packet unmarshaling failure, ignoring." << std::endl;
             continue;
