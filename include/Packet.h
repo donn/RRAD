@@ -14,7 +14,7 @@ namespace RRAD {
         uint16 ack();
         std::vector<uint8> body();
         std::vector<uint8> raw();
-        Packet acknowledge();
+        Packet acknowledge(uint16 port = 0);
     };
 }
 

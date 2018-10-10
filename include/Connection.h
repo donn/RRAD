@@ -16,6 +16,8 @@ namespace RRAD {
     public:
         Connection(std::string ip, uint16 port, int timeout = 1000);
 
+        std::vector<uint8> read();
+        void write(std::vector<uint8> data);
         void listen(std::function<void(Connection, std::vector<uint8>)> operativeLoop);
 
         std::promise< std::vector<uint8> > getData();
