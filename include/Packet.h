@@ -8,18 +8,22 @@
 
 namespace RRAD {
     class Packet {
+        std::vector<uint8> internalData;
+        uint16 acknowledgement;
+        uint16 sequence;
     public:
         Packet();
-        Packet(std::vector<uint8> data, std::optional<Packet> predecessor = std::nullopt);
+        Packet(std::vector<uint8> data, std::optional<Packet> following = std::nullopt);
         
-        static Packet unmarshalling(std::vector<uint8> data);
+        static Packet unpacking(std::vector<uint8> data);
 
-        uint16 seq();
-        uint16 ack();
-        std::vector<uint8> body();
-        std::vector<uint8> raw();
-        Packet acknowledge(uint16 port = 0);
-        bool confirmAcknowledgement(Packet acknowledgement);
+        uint16 seq() { return sequence; }
+        uint16 ack() { return acknowledgement; }
+        std::vector<uint8> body() { return internalData; }
+
+        std::vector<uint8> packed();
+        Packet acknowledge();
+        bool confirmAcknowledgement(Packet acknowledgementPacket);
     };
 }
 

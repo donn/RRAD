@@ -15,7 +15,7 @@ namespace RRAD {
         UDPSocket() {};
         UDPSocket(std::string address, uint16 port);
 
-        std::vector<uint8> read(int timeout, std::string* returnedIP = NULL, uint16* returnedPort = NULL);
+        std::vector<uint8> read(std::string* returnedIP = NULL, uint16* returnedPort = NULL);
         void write(std::vector<uint8> data);
 
         uint16 getLocalPort();

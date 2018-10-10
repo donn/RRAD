@@ -15,13 +15,13 @@ std::vector<uint8> RRAD::Connection::read() {
     std::vector<uint8> data;
     Packet packet;
 
-    data = socket.read(timeout);
+    data = socket.read();
     packet = Packet(data);
     while (packet.seq() != 0xFFFF && packet.ack() != 0xFFFF) {
         assembled.insert(std::end(assembled), std::begin(data), std::end(data));
-        data = socket.read(timeout);
-        packet = Packet::unmarshalling(data);
-        socket.write(packet.acknowledge().raw());
+        data = socket.read();
+        packet = Packet::unpacking(data);
+        socket.write(packet.acknowledge().packed());
     }
     return assembled;
 }
@@ -42,9 +42,9 @@ void RRAD::Connection::write(std::vector<uint8> data) {
         }
         sendable = std::vector<uint8>(beginning, end);
         Packet newPacket = Packet(sendable, lastPacket);
-        socket.write(newPacket.raw());
+        socket.write(newPacket.packed());
         
-        Packet acknowledgement = Packet::unmarshalling(socket.read(timeout));
+        Packet acknowledgement = Packet::unpacking(socket.read());
         bool confirmedAcknowledgement = newPacket.confirmAcknowledgement(acknowledgement);
         if (!confirmedAcknowledgement) {
             throw "Out of order.";
@@ -59,25 +59,30 @@ void RRAD::Connection::listen(std::function<void(Connection, std::vector<uint8>)
         uint16 port;
         std::vector<uint8> data;
         try {
-            data = socket.read(timeout, &ip, &port);
+            data = socket.read(&ip, &port);
         } catch (std::exception& exception) {
             continue;
         }
 
         Packet packet;
         try {
-            packet = Packet::unmarshalling(data);
+            packet = Packet::unpacking(data);
         } catch (std::exception& exception) {
             std::cerr << "Packet unmarshaling failure, ignoring." << std::endl;
             continue;
         }
 
-        auto connection = Connection(ip, port, timeout);
-        connection.socket.write(packet.acknowledge(connection.socket.getLocalPort()).raw());
+        if (packet.ack() == 0 && packet.seq() == 0 && packet.body.length() == 0) {
+            auto connection = Connection(ip, port, timeout);
+            connection.socket.write(packet.packed());
 
-        std::thread task([&]() {
-            operativeLoop(connection, connection.read());
-        });
+            std::thread task([&]() {
+                operativeLoop(connection, connection.read());
+            });
+        } else {
+            std::cerr << "Invalid connection start message." << std::endl;
+            continue;
+        }
     }
 }
 

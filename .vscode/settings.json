@@ -12,6 +12,7 @@
         "algorithm": "cpp",
         "functional": "cpp",
         "iosfwd": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "optional": "cpp"
     }
 }
