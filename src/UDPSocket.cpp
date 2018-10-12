@@ -1,38 +1,37 @@
+#ifndef _INCREDIBLY_STUPID_ALTSOCKET_TESTING
 // Project
-#include "udpsocket.hpp"
-#include "errors.hpp"
-#include "common.hpp"
-
-// C STD
-#include <cstring>
+#include "UDPSocket.h"
 
 // CPP STL
 #include <string>
 #include <iostream>
 
-// POSIX?
+// POSIX
 #include <unistd.h> 
 #include <pthread.h>
 #include <arpa/inet.h> 
 
-void UDPSocket::initializeSocket(std::string _myAddress, int _myPort) {
-	myAddress = _myAddress;
+RRAD::UDPSocket::UDPSocket() {
+	UDPSocket("0.0.0.0", 0);
+}
+
+RRAD::UDPSocket::UDPSocket(std::string _peerAddress, uint16 _peerPort, uint16 _myPort) {
+    myAddr_cast = (sockaddr*)&myAddr;
+    peerAddr_cast = (sockaddr*)&peerAddr;
+
+	myAddress = "0.0.0.0";
 	myPort = _myPort;
 
     myAddr.sin_family = AF_INET;
     myAddr.sin_port = htons(myPort);
     myAddr.sin_addr.s_addr = inet_addr(myAddress.c_str());
 
-    myAddr_cast = (sockaddr*)&myAddr;
-    peerAddr_cast = (sockaddr*)&peerAddr;
-
     sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0){
+    if (sock < 0) {
         std::cerr << "Failed to create socket." << std::endl;
         throw errno;
 	}
-
-    std::cout << "Binding..." << std::endl;
+	
     if (bind(sock, myAddr_cast, sizeof(struct sockaddr)) < 0) {
         std::cerr << "Failed to bind." << std::endl;
         throw errno;
@@ -47,13 +46,13 @@ void UDPSocket::initializeSocket(std::string _myAddress, int _myPort) {
 
 	//reassign the port to the actual bound port
 	myPort = ntohs(myAddr.sin_port);
-    std::cout << "Bound to receive from" << myAddress << ":" << myPort << std::endl;
+    std::cout << "RRAD: Bound to receive from" << myAddress << ":" << myPort << std::endl;
 
 	//better than leaving it empty
 	setPeerAddress(myAddress, myPort);
 }
 
-void UDPSocket::setPeerAddress(std::string _peerAddress, int _peerPort){
+void RRAD::UDPSocket::setPeerAddress(std::string _peerAddress, int _peerPort){
 	peerAddress = _peerAddress;
 	peerPort = _peerPort;
     peerAddr.sin_family = AF_INET;
@@ -61,56 +60,37 @@ void UDPSocket::setPeerAddress(std::string _peerAddress, int _peerPort){
     peerAddr.sin_addr.s_addr = inet_addr(peerAddress.c_str());
 }
 
-UDPSocket::UDPSocket(std::string _myAddress, int _myPort) {
-	initializeSocket(_myAddress, _myPort);
-}
-
-UDPSocket::UDPSocket(std::string _myAddress, int _myPort, std::string _peerAddress, int _peerPort) {
-	initializeSocket(_myAddress, _myPort);
-	setPeerAddress(_peerAddress, _peerPort);
-}
-
-UDPSocket::UDPSocket() {
-	initializeSocket("0.0.0.0", 0);
-}
-
-
 //negative return values indicate failures
-bool UDPSocket::write(std::vector<uint8> buffer){
+void RRAD::UDPSocket::write(std::vector<uint8> buffer){
 	int msgLength = buffer.size();
 
-	bool successFlag = true;
-
-	if (msgLength > MESSAGE_LENGTH){
-		std::cerr << "Message size should be less than " << MESSAGE_LENGTH << " bytes\n";
-		successFlag = false;
-	} else{ //attempt to send
+	if (msgLength > MESSAGE_LENGTH) {
+		throw "write.tooLargeForRRAD";
+	} else { //attempt to send
 		int number_bytes_sent = sendto(sock, &buffer[0], msgLength, 0, peerAddr_cast, sizeof(struct sockaddr));
-		if (number_bytes_sent < 0){
-			successFlag = false;
+		if (number_bytes_sent < 0) {\
 			switch(errno){
 				case EMSGSIZE:
-					std::cerr << "Message is too large to be sent atomically\n";
+					throw "write.tooLargeForSocket";
 					break;
 					//more errors here as needed
+				default:
+					throw "error.unknown";
 			}
-		} else if (number_bytes_sent < msgLength){
-			successFlag = false;
-			std::cerr << "Not all bytes were sent (a full sending buffer?)\n";
+		} else if (number_bytes_sent < msgLength) {
+			throw "write.partialWrite";
 		}
 	}
-
-	return successFlag;
 }
 
-void UDPSocket::setReadTimeoutDuration(int timeout_s, int timeout_ms){
+void RRAD::UDPSocket::setTimeout(int timeout_s, int timeout_ms){
 	struct timeval timeout_dur;
 	timeout_dur.tv_sec = timeout_s;
 	timeout_dur.tv_usec = timeout_ms*1000;
 	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_dur, sizeof(timeout_dur));
 }
 
-std::vector<uint8> UDPSocket::read(std::string *newPeerIP, int *newPeerPort){
+std::vector<uint8> RRAD::UDPSocket::read(std::string *newPeerIP, uint16 *newPeerPort){
 	char *buffer = new char[MESSAGE_LENGTH];
 
 	sockaddr_in newPeerAddr;
@@ -148,18 +128,10 @@ std::vector<uint8> UDPSocket::read(std::string *newPeerIP, int *newPeerPort){
 	return ret_vector;
 }
 
-int UDPSocket::getMyPort() {
-    return myPort;
-}
-
-int UDPSocket::getPeerPort() {
-    return peerPort;
-}
-
-
-UDPSocket::~UDPSocket() {
+RRAD::UDPSocket::~UDPSocket() {
     //pthread_mutex_unlock(&mutex);
     if (sock > 0) {
         close(sock);
     }
 }
+#endif

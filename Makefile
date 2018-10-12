@@ -32,4 +32,6 @@ $(LIB): $(OBJECTS)
 
 clean:
 	rm -rf build/
+	rm -rf *.dSYM/
 	rm -f $(LIB)
+	rm -f *.out

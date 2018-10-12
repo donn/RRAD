@@ -1,12 +1,28 @@
-
-
 #ifdef _INCREDIBLY_STUPID_ALTSOCKET_TESTING
 #include "UDPSocket.h"
 #include <iostream>
 
-RRAD::UDPSocket::UDPSocket(std::string address, uint16 port) {
+RRAD::UDPSocket::UDPSocket() {
+
+}
+
+RRAD::UDPSocket::~UDPSocket() {
+
+}
+
+
+RRAD::UDPSocket::UDPSocket(std::string address, uint16 port, uint16 localPort) {
     
 }
+
+void RRAD::UDPSocket::setTimeout(int a, int b) {
+
+}
+
+void RRAD::UDPSocket::setPeerAddress(std::string a, int b) {
+    
+}
+
 
 std::vector<uint8> RRAD::UDPSocket::read(std::string* returnedIP, uint16* returnedPort) {
     if (returnedIP) {

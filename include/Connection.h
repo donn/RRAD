@@ -14,7 +14,7 @@ namespace RRAD {
         int timeout;
         UDPSocket socket;
     public:
-        Connection(std::string ip, uint16 port, int timeout = 1000);
+        Connection(std::string ip, uint16 port, int timeout = 1000, uint16 localPort = 0);
 
         std::vector<uint8> read();
         void write(std::vector<uint8> data);

@@ -1,6 +1,5 @@
 // Project Headers
-#include "server.hpp"
-#include "udpsocket.hpp"
+#include "UDPSocket.h"
 
 // C STD
 #include <stdlib.h>

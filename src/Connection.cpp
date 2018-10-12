@@ -6,8 +6,9 @@
 
 #define forever for(;;)
 
-RRAD::Connection::Connection(std::string ip, uint16 port, int timeout) {
-    socket = UDPSocket(ip, port);
+RRAD::Connection::Connection(std::string ip, uint16 port, int timeout, uint16 localPort) {
+    socket = UDPSocket(ip, port, localPort);
+    socket.setTimeout(timeout / 1000, timeout % 1000);
 }
 
 std::vector<uint8> RRAD::Connection::read() {
@@ -15,9 +16,13 @@ std::vector<uint8> RRAD::Connection::read() {
     std::vector<uint8> data;
     Packet packet;
 
+    std::string ip;
+    uint16 port;
+
     uint16 lastAck = 0;
     do {
-        data = socket.read();
+        data = socket.read(&ip, &port);
+        socket.setPeerAddress(ip, port);
         packet = Packet::unpacking(data);
         Packet acknowledgement = packet.acknowledge();
 
@@ -99,6 +104,8 @@ void RRAD::Connection::listen(std::function<void(Connection)> operativeLoop) {
             std::cerr << "Invalid connection start message." << std::endl;
             continue;
         }
+#ifdef _INCREDIBLY_STUPID_ALTSOCKET_TESTING
         forever{}
+#endif //_INCREDIBLY_STUPID_ALTSOCKET_TESTING
     }
 }
