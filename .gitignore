@@ -2,3 +2,5 @@ build/
 client
 server
 *.dSYM/
+*.out
+*.dylib

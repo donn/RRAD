@@ -16,6 +16,7 @@ namespace RRAD {
         Packet(std::vector<uint8> data, std::optional<Packet> following = std::nullopt);
         
         static Packet unpacking(std::vector<uint8> data);
+        static Packet terminator();
 
         uint16 seq() { return sequence; }
         uint16 ack() { return acknowledgement; }

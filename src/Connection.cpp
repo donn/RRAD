@@ -15,14 +15,23 @@ std::vector<uint8> RRAD::Connection::read() {
     std::vector<uint8> data;
     Packet packet;
 
-    data = socket.read();
-    packet = Packet(data);
-    while (packet.seq() != 0xFFFF && packet.ack() != 0xFFFF) {
-        assembled.insert(std::end(assembled), std::begin(data), std::end(data));
+    uint16 lastAck = 0;
+    do {
         data = socket.read();
         packet = Packet::unpacking(data);
-        socket.write(packet.acknowledge().packed());
-    }
+        Packet acknowledgement = packet.acknowledge();
+
+        if (packet.seq() != lastAck && !(packet.seq() == 0xFFFF && packet.ack() == 0xFFFF)) {
+            throw "Out of order.";
+        }
+
+        socket.write(acknowledgement.packed());
+        lastAck = acknowledgement.ack();
+        
+        auto unpackedData = packet.body();
+        assembled.insert(std::end(assembled), std::begin(unpackedData), std::end(unpackedData));
+
+    } while (packet.seq() != 0xFFFF || packet.ack() != 0xFFFF);
     return assembled;
 }
 
@@ -34,16 +43,22 @@ void RRAD::Connection::write(std::vector<uint8> data) {
     std::vector<uint8> sendable;
     std::optional<Packet> lastPacket = std::nullopt;
     
-    for (int i = 0; i < transmissions; i += 1) {
-        std::vector<uint8>::const_iterator beginning = data.begin() + i * 1024;
-        std::vector<uint8>::const_iterator end = data.begin() + (i + 1) * 1024;
-        if (end > data.end()) {
-            end = data.end();
+    for (int i = 0; i <= transmissions; i += 1) {
+        Packet newPacket;
+
+        if (i != transmissions) {
+            std::vector<uint8>::const_iterator beginning = data.begin() + i * MESSAGE_LENGTH;
+            std::vector<uint8>::const_iterator end = data.begin() + (i + 1) * MESSAGE_LENGTH;
+            if (end > data.end()) {
+                end = data.end();
+            }
+            sendable = std::vector<uint8>(beginning, end);
+            newPacket = Packet(sendable, lastPacket);
+        } else {
+            newPacket = Packet::terminator();
         }
-        sendable = std::vector<uint8>(beginning, end);
-        Packet newPacket = Packet(sendable, lastPacket);
-        socket.write(newPacket.packed());
         
+        socket.write(newPacket.packed());
         Packet acknowledgement = Packet::unpacking(socket.read());
         bool confirmedAcknowledgement = newPacket.confirmAcknowledgement(acknowledgement);
         if (!confirmedAcknowledgement) {
@@ -53,7 +68,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
     }
 }
 
-void RRAD::Connection::listen(std::function<void(Connection, std::vector<uint8>)> operativeLoop) {
+void RRAD::Connection::listen(std::function<void(Connection)> operativeLoop) {
     forever {
         std::string ip;
         uint16 port;
@@ -72,17 +87,18 @@ void RRAD::Connection::listen(std::function<void(Connection, std::vector<uint8>)
             continue;
         }
 
-        if (packet.ack() == 0 && packet.seq() == 0 && packet.body.length() == 0) {
+        if (packet.ack() == 0 && packet.seq() == 0 && packet.body().size() == 0) {
             auto connection = Connection(ip, port, timeout);
             connection.socket.write(packet.packed());
 
             std::thread task([&]() {
-                operativeLoop(connection, connection.read());
+                operativeLoop(connection);
             });
+            task.detach();
         } else {
             std::cerr << "Invalid connection start message." << std::endl;
             continue;
         }
+        forever{}
     }
 }
-

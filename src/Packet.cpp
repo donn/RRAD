@@ -1,5 +1,6 @@
 #include "Packet.h"
 
+RRAD::Packet::Packet() {}
 RRAD::Packet::Packet(std::vector<uint8> data, std::optional<Packet> following) {
     internalData = data;
     if (following.has_value()) {
@@ -29,11 +30,20 @@ RRAD::Packet RRAD::Packet::unpacking(std::vector<uint8> data) {
     auto end = data.end();
 
     packet.internalData = std::vector<uint8>(beginning, end);
+    return packet;
 }
 
-static std::vector<uint8> disassemble(int value) {
+RRAD::Packet RRAD::Packet::terminator() {
+    Packet packet = Packet();
+    packet.sequence = 0xFFFF;
+    packet.acknowledgement = 0xFFFF;
+    packet.internalData = {};
+    return packet;
+}
+
+static std::vector<uint8> disassemble(int value, int count) {
     std::vector<uint8> bytes = std::vector<uint8>();
-    while (value) {
+    while (count--) {
         bytes.push_back(value & 0xFF);
         value >>= 8;
     }
@@ -41,10 +51,10 @@ static std::vector<uint8> disassemble(int value) {
 }
 
 std::vector<uint8> RRAD::Packet::packed() {
-    std::vector<uint8> data = internalData.size + 4;
+    std::vector<uint8> data;
 
-    auto packedSequence = disassemble(sequence);
-    auto packedAcknowledgement = disassemble(acknowledgement);
+    auto packedSequence = disassemble(sequence, 2);
+    auto packedAcknowledgement = disassemble(acknowledgement, 2);
     
     data.insert(data.end(), packedSequence.begin(), packedSequence.end());
     data.insert(data.end(), packedAcknowledgement.begin(), packedAcknowledgement.end());
