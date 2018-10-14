@@ -11,11 +11,8 @@
 #include <pthread.h>
 #include <arpa/inet.h> 
 
-RRAD::UDPSocket::UDPSocket() {
-	UDPSocket("0.0.0.0", 0);
-}
 
-RRAD::UDPSocket::UDPSocket(std::string _peerAddress, uint16 _peerPort, uint16 _myPort) {
+void RRAD::UDPSocket::initSocket(std::string _peerAddress, uint16 _peerPort, uint16 _myPort) {
     myAddr_cast = (sockaddr*)&myAddr;
     peerAddr_cast = (sockaddr*)&peerAddr;
 
@@ -46,10 +43,18 @@ RRAD::UDPSocket::UDPSocket(std::string _peerAddress, uint16 _peerPort, uint16 _m
 
 	//reassign the port to the actual bound port
 	myPort = ntohs(myAddr.sin_port);
-    std::cout << "RRAD: Bound to receive from" << myAddress << ":" << myPort << std::endl;
+    std::cout << "RRAD: Bound to receive from " << myAddress << ":" << myPort << std::endl;
 
 	//better than leaving it empty
-	setPeerAddress(myAddress, myPort);
+	setPeerAddress(_peerAddress, _peerPort);
+}
+
+RRAD::UDPSocket::UDPSocket() {
+	initSocket("0.0.0.0", 0, 0);
+}
+
+RRAD::UDPSocket::UDPSocket(std::string _peerAddress, uint16 _peerPort, uint16 _myPort) {
+	initSocket(_peerAddress, _peerPort, _myPort);
 }
 
 void RRAD::UDPSocket::setPeerAddress(std::string _peerAddress, int _peerPort){
@@ -63,11 +68,13 @@ void RRAD::UDPSocket::setPeerAddress(std::string _peerAddress, int _peerPort){
 //negative return values indicate failures
 void RRAD::UDPSocket::write(std::vector<uint8> buffer){
 	int msgLength = buffer.size();
+	std::cerr  << "msgLength = " << msgLength << " bytes\n";
 
 	if (msgLength > MESSAGE_LENGTH) {
 		throw "write.tooLargeForRRAD";
 	} else { //attempt to send
 		int number_bytes_sent = sendto(sock, &buffer[0], msgLength, 0, peerAddr_cast, sizeof(struct sockaddr));
+		std::cerr  << " sendto sent " << number_bytes_sent << " bytes\n";
 		if (number_bytes_sent < 0) {\
 			switch(errno){
 				case EMSGSIZE:
@@ -97,27 +104,27 @@ std::vector<uint8> RRAD::UDPSocket::read(std::string *newPeerIP, uint16 *newPeer
 	sockaddr *newPeerAddr_cast = (sockaddr *)&newPeerAddr;
 	socklen_t leng = sizeof(newPeerAddr_cast);
 	int number_bytes_read = recvfrom(sock, buffer, MESSAGE_LENGTH, 0, newPeerAddr_cast, &leng);
+	std::cerr  << " recfrom got " << number_bytes_read << " bytes\n";
 	if (number_bytes_read < 0){ //==0??
 		switch (errno){
 			case ETIMEDOUT:
 			case EAGAIN:
-				std::cerr << "Reading timed out\n";
+				throw("Reading timed out\n");
 				break;
 			case ENOTSOCK:
-				std::cerr << "The socket arg does not refer to a socket\n";
+				throw("The socket arg does not refer to a socket\n");
 				break;
 			case EIO:
-				std::cerr << "IO error\n";
+				throw("IO error\n");
 				break;
 			case ENOBUFS :
-				std::cerr << "Insufficient resources to receive\n";
+				throw("Insufficient resources to receive\n");
 				break;
 			default:
-				std::cerr << "Check errnos of recvfrom\n" << "code: " << errno;
-				//std::cerr << '\n' << EINVAL << " " << ENOMEM << " " << EFAULT <<  " " << ECONNREFUSED << " " << EAGAIN << " " << EWOULDBLOCK <<  '\n';
+				std::cerr << "code: " << errno << std::endl;
+				std::cerr << '\n' << EINVAL << " " << ENOMEM << " " << EFAULT <<  " " << ECONNREFUSED << " " << EAGAIN << " " << EWOULDBLOCK << ' ' << EBADF << ' ' << ENOTSOCK << '\n';
+				throw ( "Check errnos of recvfrom\n"); 
 		}
-		std::vector<uint8> empty_vector(0);
-		return empty_vector; //??
 	}
 
 	std::vector<uint8> ret_vector(buffer, buffer+number_bytes_read);

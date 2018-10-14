@@ -35,7 +35,11 @@ namespace RRAD {
         int peerPort;
         sockaddr_in peerAddr;
         sockaddr* peerAddr_cast;
+		
+
     public:
+        void initSocket(std::string address, uint16 port, uint16 localPort);
+
         UDPSocket();
         UDPSocket(std::string address, uint16 port, uint16 localPort = 0);
         ~UDPSocket();

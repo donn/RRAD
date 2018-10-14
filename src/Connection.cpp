@@ -7,8 +7,12 @@
 #define forever for(;;)
 
 RRAD::Connection::Connection(std::string ip, uint16 port, int timeout, uint16 localPort) {
-    socket = UDPSocket(ip, port, localPort);
-    socket.setTimeout(timeout / 1000, timeout % 1000);
+	socketp = new UDPSocket(ip, port, localPort);
+	socketp->setTimeout(timeout / 1000, timeout % 1000);
+}
+
+RRAD::Connection::~Connection() {
+	delete socketp;
 }
 
 std::vector<uint8> RRAD::Connection::read() {
@@ -21,8 +25,8 @@ std::vector<uint8> RRAD::Connection::read() {
 
     uint16 lastAck = 0;
     do {
-        data = socket.read(&ip, &port);
-        socket.setPeerAddress(ip, port);
+        data = socketp->read(&ip, &port);
+        socketp->setPeerAddress(ip, port);
         packet = Packet::unpacking(data);
         Packet acknowledgement = packet.acknowledge();
 
@@ -30,7 +34,7 @@ std::vector<uint8> RRAD::Connection::read() {
             throw "Out of order.";
         }
 
-        socket.write(acknowledgement.packed());
+        socketp->write(acknowledgement.packed());
         lastAck = acknowledgement.ack();
         
         auto unpackedData = packet.body();
@@ -41,6 +45,7 @@ std::vector<uint8> RRAD::Connection::read() {
 }
 
 void RRAD::Connection::write(std::vector<uint8> data) {
+	std::cerr << "trying to write " << data.size() << " bytes\n";
     int transmissions = data.size() / MESSAGE_LENGTH;
     if (data.size() % MESSAGE_LENGTH) {
         transmissions += 1;
@@ -63,8 +68,8 @@ void RRAD::Connection::write(std::vector<uint8> data) {
             newPacket = Packet::terminator();
         }
         
-        socket.write(newPacket.packed());
-        Packet acknowledgement = Packet::unpacking(socket.read());
+        socketp->write(newPacket.packed());
+        Packet acknowledgement = Packet::unpacking(socketp->read());
         bool confirmedAcknowledgement = newPacket.confirmAcknowledgement(acknowledgement);
         if (!confirmedAcknowledgement) {
             throw "Out of order.";
@@ -73,14 +78,16 @@ void RRAD::Connection::write(std::vector<uint8> data) {
     }
 }
 
-void RRAD::Connection::listen(std::function<void(Connection)> operativeLoop) {
+void RRAD::Connection::listen(std::function<void(Connection&)> operativeLoop) {
     forever {
         std::string ip;
         uint16 port;
         std::vector<uint8> data;
         try {
-            data = socket.read(&ip, &port);
+            data = socketp->read(&ip, &port);
+			std::cerr << "got " << data.size() << " bytes\n";
         } catch (std::exception& exception) {
+			//std::cerr << "and then?\n";
             continue;
         }
 
@@ -93,8 +100,9 @@ void RRAD::Connection::listen(std::function<void(Connection)> operativeLoop) {
         }
 
         if (packet.ack() == 0 && packet.seq() == 0 && packet.body().size() == 0) {
-            auto connection = Connection(ip, port, timeout);
-            connection.socket.write(packet.packed());
+			std::cerr << "here\n";
+            Connection connection(ip, port, timeout);
+            connection.socketp->write(packet.packed());
 
             std::thread task([&]() {
                 operativeLoop(connection);

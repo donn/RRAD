@@ -5,14 +5,15 @@ using namespace RRAD;
 #include <iostream>
 
 int main() {
-    Connection c("0.0.0.0", 41, 1000, 9001);
+	Connection c("0.0.0.0", 44411, 0, 9001);
 
-    c.listen([&](Connection cn){
-        auto blob = cn.read();
-        std::string str(blob.begin(),blob.end());
-        std::cout << str << std::endl;
+	c.listen([&](Connection &cn){
+			std::cout << "connection received\n";
+			auto blob = cn.read();
+			std::string str(blob.begin(),blob.end());
+			std::cout << str << std::endl;
 
-        cn.write({'w', 'a', 'k', 'e', 'm', 'e', 'u', 'p'});
-    });
-
+			cn.write({'w', 'a', 'k', 'e', 'm', 'e', 'u', 'p'});
+			});
+	return 0;
 }
