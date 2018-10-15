@@ -22,6 +22,7 @@
 
 namespace RRAD {
     class UDPSocket {
+        friend class Connection;
         int sock;
 
         //"my" address/port refers to the address/port the socket can receive from
@@ -48,7 +49,7 @@ namespace RRAD {
         void write(std::vector<uint8> data);
         
         void setTimeout(int timeout_s, int timeout_ms);
-        void setPeerAddress(std::string _peerAddress, int _peerPort);
+        void setPeerAddress(std::string _peerAddress, uint16 _peerPort, bool reinitialized = true);
 
         uint16 getLocalPort();
         uint16 getRemotePort();

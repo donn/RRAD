@@ -33,6 +33,14 @@ RRAD::Packet RRAD::Packet::unpacking(std::vector<uint8> data) {
     return packet;
 }
 
+RRAD::Packet RRAD::Packet::initializer() {
+    Packet packet = Packet();
+    packet.sequence = 0x0;
+    packet.acknowledgement = 0x0;
+    packet.internalData = {};
+    return packet;
+}
+
 RRAD::Packet RRAD::Packet::terminator() {
     Packet packet = Packet();
     packet.sequence = 0xFFFF;

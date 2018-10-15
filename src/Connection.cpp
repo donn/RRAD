@@ -6,6 +6,17 @@
 
 #define forever for(;;)
 
+#define CONNECTION_DESCRIPTOR(stream) do { \
+	stream << "Connection $" << this << " to (@" << socketp->myPort << " -> " << socketp->peerAddress << ":" << socketp->peerPort << ")"; \
+} while (0);
+
+#define CONNECTION_ERROR(message) do { \
+	std::cerr << "ERROR: "; \
+	CONNECTION_DESCRIPTOR(std::cerr); \
+	std::cerr << ": " << message << std::endl; \
+	throw message; \
+} while (0);
+
 RRAD::Connection::Connection(std::string ip, uint16 port, int timeout, uint16 localPort) {
 	socketp = new UDPSocket(ip, port, localPort);
 	socketp->setTimeout(timeout / 1000, timeout % 1000);
@@ -31,7 +42,7 @@ std::vector<uint8> RRAD::Connection::read() {
         Packet acknowledgement = packet.acknowledge();
 
         if (packet.seq() != lastAck && !(packet.seq() == 0xFFFF && packet.ack() == 0xFFFF)) {
-            throw "Out of order.";
+            CONNECTION_ERROR("conn.outOfOrder");
         }
 
         socketp->write(acknowledgement.packed());
@@ -52,6 +63,16 @@ void RRAD::Connection::write(std::vector<uint8> data) {
     }
     std::vector<uint8> sendable;
     std::optional<Packet> lastPacket = std::nullopt;
+
+    std::string newIP;
+    uint16 newPort;
+    auto initializer = Packet::initializer();
+    socketp->write(initializer.packed());
+    auto initializerReply = Packet::unpacking(socketp->read(&newIP, &newPort));
+    if (!initializer.confirmAcknowledgement(initializerReply)) {
+        CONNECTION_ERROR("conn.deniedHandshake");
+    }
+    socketp->setPeerAddress(newIP, newPort);
     
     for (int i = 0; i <= transmissions; i += 1) {
         Packet newPacket;
@@ -72,7 +93,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
         Packet acknowledgement = Packet::unpacking(socketp->read());
         bool confirmedAcknowledgement = newPacket.confirmAcknowledgement(acknowledgement);
         if (!confirmedAcknowledgement) {
-            throw "Out of order.";
+            CONNECTION_ERROR("conn.outOfOrder");
         }
         lastPacket = newPacket;
     }
@@ -98,9 +119,8 @@ void RRAD::Connection::listen(std::function<void(Connection&)> operativeLoop) {
             std::cerr << "Packet unmarshaling failure, ignoring." << std::endl;
             continue;
         }
-
+        
         if (packet.ack() == 0 && packet.seq() == 0 && packet.body().size() == 0) {
-			std::cerr << "here\n";
             Connection connection(ip, port, timeout);
             connection.socketp->write(packet.packed());
 
@@ -109,7 +129,7 @@ void RRAD::Connection::listen(std::function<void(Connection&)> operativeLoop) {
             });
             task.detach();
         } else {
-            std::cerr << "Invalid connection start message." << std::endl;
+            std::cerr << "Invalid handshake from " << ip << ":" << port << " ignoring." << std::endl;
             continue;
         }
 #ifdef _INCREDIBLY_STUPID_ALTSOCKET_TESTING

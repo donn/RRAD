@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <errno.h>
 
 namespace RRAD {
     class Packet {
@@ -16,6 +17,7 @@ namespace RRAD {
         Packet(std::vector<uint8> data, std::optional<Packet> following = std::nullopt);
         
         static Packet unpacking(std::vector<uint8> data);
+        static Packet initializer();
         static Packet terminator();
 
         uint16 seq() { return sequence; }

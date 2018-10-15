@@ -9,7 +9,18 @@
 // POSIX
 #include <unistd.h> 
 #include <pthread.h>
-#include <arpa/inet.h> 
+#include <arpa/inet.h>
+
+#define SOCKET_DESCRIPTOR(stream) do { \
+	stream << "[UDPSocket $" << this << " to (@" << myPort << " -> " << peerAddress << ":" << peerPort << ", fd " << sock << ")] "; \
+} while (0);
+
+#define SOCKET_ERROR(message) do { \
+	std::cerr << "ERROR: "; \
+	SOCKET_DESCRIPTOR(std::cerr); \
+	std::cerr << message << std::endl; \
+	throw message; \
+} while (0);
 
 
 void RRAD::UDPSocket::initSocket(std::string _peerAddress, uint16 _peerPort, uint16 _myPort) {
@@ -25,28 +36,24 @@ void RRAD::UDPSocket::initSocket(std::string _peerAddress, uint16 _peerPort, uin
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-        std::cerr << "Failed to create socket." << std::endl;
-        throw errno;
+        SOCKET_ERROR("socket.failedToCreate");
 	}
 	
     if (bind(sock, myAddr_cast, sizeof(struct sockaddr)) < 0) {
-        std::cerr << "Failed to bind." << std::endl;
-        throw errno;
+        SOCKET_ERROR("socket.failedToBind");
     }
 
 	socklen_t leng = sizeof(myAddr_cast);
 	//retrieve it from the system to see what port was actually bound to it
 	if (getsockname(sock, myAddr_cast, &leng) < 0){
-        std::cerr << "Socket not found." << std::endl;
-        throw errno;
+        SOCKET_ERROR("socket.notFound");
 	}
 
 	//reassign the port to the actual bound port
 	myPort = ntohs(myAddr.sin_port);
-    std::cout << "RRAD: Bound to receive from " << myAddress << ":" << myPort << std::endl;
 
 	//better than leaving it empty
-	setPeerAddress(_peerAddress, _peerPort);
+	setPeerAddress(_peerAddress, _peerPort, false);
 }
 
 RRAD::UDPSocket::UDPSocket() {
@@ -57,35 +64,42 @@ RRAD::UDPSocket::UDPSocket(std::string _peerAddress, uint16 _peerPort, uint16 _m
 	initSocket(_peerAddress, _peerPort, _myPort);
 }
 
-void RRAD::UDPSocket::setPeerAddress(std::string _peerAddress, int _peerPort){
+void RRAD::UDPSocket::setPeerAddress(std::string _peerAddress, uint16 _peerPort, bool reinitialized) {
 	peerAddress = _peerAddress;
 	peerPort = _peerPort;
     peerAddr.sin_family = AF_INET;
     peerAddr.sin_port = htons(peerPort);
     peerAddr.sin_addr.s_addr = inet_addr(peerAddress.c_str());
+
+	std::cout << (reinitialized? "Reinitialized ": "Initialized ");
+	SOCKET_DESCRIPTOR(std::cout);
+	std::cout << std::endl;
 }
 
 //negative return values indicate failures
 void RRAD::UDPSocket::write(std::vector<uint8> buffer){
 	int msgLength = buffer.size();
-	std::cerr  << "msgLength = " << msgLength << " bytes\n";
+	SOCKET_DESCRIPTOR(std::cout);
+	std::cerr  << "Trying to write: msgLength = " << msgLength << " bytes\n";
 
 	if (msgLength > MESSAGE_LENGTH) {
+		std::cerr << "Write too large." << std::endl;
 		throw "write.tooLargeForRRAD";
 	} else { //attempt to send
 		int number_bytes_sent = sendto(sock, &buffer[0], msgLength, 0, peerAddr_cast, sizeof(struct sockaddr));
-		std::cerr  << " sendto sent " << number_bytes_sent << " bytes\n";
+		SOCKET_DESCRIPTOR(std::cout);
+		std::cerr  << "sendto sent " << number_bytes_sent << " bytes\n";
 		if (number_bytes_sent < 0) {\
 			switch(errno){
 				case EMSGSIZE:
-					throw "write.tooLargeForSocket";
+					SOCKET_ERROR("write.tooLargeForSocket");
 					break;
 					//more errors here as needed
 				default:
-					throw "error.unknown";
+					SOCKET_ERROR("write.unknown");
 			}
 		} else if (number_bytes_sent < msgLength) {
-			throw "write.partialWrite";
+			SOCKET_ERROR("write.partial");
 		}
 	}
 }
@@ -104,34 +118,41 @@ std::vector<uint8> RRAD::UDPSocket::read(std::string *newPeerIP, uint16 *newPeer
 	sockaddr *newPeerAddr_cast = (sockaddr *)&newPeerAddr;
 	socklen_t leng = sizeof(newPeerAddr_cast);
 	int number_bytes_read = recvfrom(sock, buffer, MESSAGE_LENGTH, 0, newPeerAddr_cast, &leng);
-	std::cerr  << " recfrom got " << number_bytes_read << " bytes\n";
+	SOCKET_DESCRIPTOR(std::cout);
+	std::cout  << "recvfrom got " << number_bytes_read << " bytes" << std::endl;
 	if (number_bytes_read < 0){ //==0??
 		switch (errno){
 			case ETIMEDOUT:
 			case EAGAIN:
-				throw("Reading timed out\n");
+				SOCKET_ERROR("socket.read.timeout");
 				break;
 			case ENOTSOCK:
-				throw("The socket arg does not refer to a socket\n");
+				SOCKET_ERROR("socket.read.notASocket");
 				break;
 			case EIO:
-				throw("IO error\n");
+				SOCKET_ERROR("socket.read.ioError");
+				break;
+			case EBADF:
+				SOCKET_ERROR("socket.read.badFileDescriptor");
 				break;
 			case ENOBUFS :
-				throw("Insufficient resources to receive\n");
+				SOCKET_ERROR("socket.read.insufficientResources");
 				break;
 			default:
-				std::cerr << "code: " << errno << std::endl;
-				std::cerr << '\n' << EINVAL << " " << ENOMEM << " " << EFAULT <<  " " << ECONNREFUSED << " " << EAGAIN << " " << EWOULDBLOCK << ' ' << EBADF << ' ' << ENOTSOCK << '\n';
-				throw ( "Check errnos of recvfrom\n"); 
+				std::cerr << "Error code: " << errno << std::endl;
+				SOCKET_ERROR("read.unknown"); 
 		}
 	}
 
 	std::vector<uint8> ret_vector(buffer, buffer+number_bytes_read);
 	delete [] buffer;
-	
-	newPeerIP->assign(inet_ntoa(newPeerAddr.sin_addr));
-	*newPeerPort = ntohs(newPeerAddr.sin_port);
+
+	if (newPeerIP) {
+		*newPeerIP = std::string(inet_ntoa(newPeerAddr.sin_addr));
+	}
+	if (newPeerPort) {
+		*newPeerPort = ntohs(newPeerAddr.sin_port);
+	}
 	return ret_vector;
 }
 
