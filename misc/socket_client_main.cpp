@@ -13,13 +13,18 @@
 
 int main(int argc , char *argv[]) {
 
-	UDPSocket udp ("0.0.0.0", 0);
+	RRAD::UDPSocket udp ("0.0.0.0", 0);
 	udp.setPeerAddress("0.0.0.0", 3333);
 	std::vector<uint8> vi;
 	vi.push_back (15);
 	vi.push_back (14);
 	std::cout << "sending " << (int)vi[0] << '\n';
-	udp.write(vi);
+	try{
+		udp.write(vi);
+	} catch (std::string e){
+		std::cout << e << std::endl;
+	}
+
 
 	return 0;
 }

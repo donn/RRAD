@@ -18,6 +18,9 @@
 } while (0);
 
 RRAD::Connection::Connection(std::string ip, uint16 port, int timeout, uint16 localPort) {
+    this->ip = ip;
+    this->port = port;
+    this->timeout = timeout;
 	socketp = new UDPSocket(ip, port, localPort);
 	socketp->setTimeout(timeout / 1000, timeout % 1000);
 }
@@ -121,10 +124,11 @@ void RRAD::Connection::listen(std::function<void(Connection&)> operativeLoop) {
         }
         
         if (packet.ack() == 0 && packet.seq() == 0 && packet.body().size() == 0) {
-            Connection connection(ip, port, timeout);
-            connection.socketp->write(packet.packed());
 
-            std::thread task([&]() {
+            std::vector<uint8> echoBack = packet.packed();
+            std::thread task([=]() { //copying not referencing; after the detach, everything is lost
+                Connection connection(ip, port, timeout);
+                connection.socketp->write(echoBack);
                 operativeLoop(connection);
             });
             task.detach();

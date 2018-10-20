@@ -157,7 +157,6 @@ std::vector<uint8> RRAD::UDPSocket::read(std::string *newPeerIP, uint16 *newPeer
 }
 
 RRAD::UDPSocket::~UDPSocket() {
-    //pthread_mutex_unlock(&mutex);
     if (sock > 0) {
         close(sock);
     }

@@ -8,12 +8,26 @@ int main() {
 	Connection c("0.0.0.0", 44411, 0, 9001);
 
 	c.listen([&](Connection &cn){
-		std::cout << "connection received\n";
 		auto blob = cn.read();
-		std::string str(blob.begin(),blob.end());
-		std::cout << str << std::endl;
+		char transaction;
+		std::string s;
+		s = std::string(blob.begin(),blob.end());
+		std::cout << "connection received\n" << " Got " << s << " as first thing\n";
+		while(1){
+			std::cout << "receive ('r') or not?";
+			std::cin >> transaction; std::cin.ignore();
 
-		cn.write({'w', 'a', 'k', 'e', 'm', 'e', 'u', 'p'});
+			std::cout << "#####";
+			if (transaction == 'r'){
+				blob = cn.read();
+				s = std::string(blob.begin(),blob.end());
+				std::cout << "P1: got " << s << std::endl;
+			} else {
+				s = "Last time got " + s;
+				cn.write (std::vector<uint8>(s.begin(), s.end()));
+				std::cout << "P1: gonna send: " << s << std::endl;
+			}
+		}
 	});
 	return 0;
 }

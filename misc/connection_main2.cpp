@@ -9,14 +9,25 @@ int main() {
 	std::string s = "have fun";
 	//c.write ({});
 
-	c.write ({'h', 'a', 'v', 'e', ' ', 'f', 'u', 'n'});
+    //initialize connection and send a first msg
+	c.write (std::vector<uint8>(s.begin(), s.end()));
+    while(1){
+        char transaction;
+        std::string s;
+        std::cout << "#####receive ('r') or not?";
+        std::cin >> transaction; std::cin.ignore();
 
-    c.listen([&](Connection cn){
-        auto blob = cn.read();
-        std::string str(blob.begin(),blob.end());
-        std::cout << str << std::endl;
+        std::cout << "#####";
+        if (transaction == 'r'){
+            auto blob = c.read();
+            s = std::string(blob.begin(),blob.end());
+            std::cout << "P2: " << s << std::endl;
+        } else {
+            std::cout << "P2: gonna send: ";
+            std::getline(std::cin, s); std::cin.clear();
+            c.write (std::vector<uint8>(s.begin(), s.end()));
 
-        cn.write({'l', 'o', 'l'});
-    });
+        }
+    }
 
 }

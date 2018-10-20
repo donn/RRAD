@@ -12,12 +12,11 @@
 #include <unistd.h>
 
 int main(int argc , char *argv[]) {
-	UDPSocket udp("0.0.0.0", 3333);
+	RRAD::UDPSocket udp("0.0.0.0", 3333, 3333);
 	std::string ip;
-	int port;
-	std::vector<uint8> vi = udp.read(&ip, &port);
-	
-	std::cout << "received " << vi.size() << '\n';
+	unsigned short port;
+	std::vector<uint8> vi = udp.read(&ip, &port);	
+	std::cout << "received " << vi.size() << " bytes" << std::endl;
 
 	if (!vi.empty())
 		std::cout << (int)vi[0];
