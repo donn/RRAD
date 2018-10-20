@@ -1,7 +1,9 @@
-# RRAC
-The Request-Reply-Acknowledge-Crash protocol:
+# RRAD
+The Request-Reply-Acknowledge-Die library.
 
-A (somewhat) reliable protocol written on top of UDP.
+(Though here, it's more like request-acknowledge-die...)
+
+Some reliability on top of UDP.
 
 # Requirements
 A competent C++17 compiler, mostly POSIX-compliant operating system.

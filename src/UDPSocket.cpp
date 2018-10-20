@@ -22,6 +22,10 @@
 	throw message; \
 } while (0);
 
+#ifndef _VERBOSE_UDPSOCKET_DEBUG
+#define _VERBOSE_UDPSOCKET_DEBUG 0
+#endif
+
 
 void RRAD::UDPSocket::initSocket(std::string _peerAddress, uint16 _peerPort, uint16 _myPort) {
     myAddr_cast = (sockaddr*)&myAddr;
@@ -71,24 +75,31 @@ void RRAD::UDPSocket::setPeerAddress(std::string _peerAddress, uint16 _peerPort,
     peerAddr.sin_port = htons(peerPort);
     peerAddr.sin_addr.s_addr = inet_addr(peerAddress.c_str());
 
-	std::cout << (reinitialized? "Reinitialized ": "Initialized ");
-	SOCKET_DESCRIPTOR(std::cout);
-	std::cout << std::endl;
+	if (_VERBOSE_UDPSOCKET_DEBUG) {
+		std::cout << (reinitialized? "Reinitialized ": "Initialized ");
+		SOCKET_DESCRIPTOR(std::cout);
+		std::cout << std::endl;
+	}
 }
 
 //negative return values indicate failures
 void RRAD::UDPSocket::write(std::vector<uint8> buffer){
 	int msgLength = buffer.size();
-	SOCKET_DESCRIPTOR(std::cout);
-	std::cerr  << "Trying to write: msgLength = " << msgLength << " bytes\n";
+
+	if (_VERBOSE_UDPSOCKET_DEBUG) {
+		SOCKET_DESCRIPTOR(std::cout);
+		std::cerr  << "Trying to write: msgLength = " << msgLength << " bytes\n";
+	}
 
 	if (msgLength > MESSAGE_LENGTH) {
 		std::cerr << "Write too large." << std::endl;
 		throw "write.tooLargeForRRAD";
 	} else { //attempt to send
 		int number_bytes_sent = sendto(sock, &buffer[0], msgLength, 0, peerAddr_cast, sizeof(struct sockaddr));
-		SOCKET_DESCRIPTOR(std::cout);
-		std::cerr  << "sendto sent " << number_bytes_sent << " bytes\n";
+		if (_VERBOSE_UDPSOCKET_DEBUG) {
+			SOCKET_DESCRIPTOR(std::cout);
+			std::cerr  << "sendto sent " << number_bytes_sent << " bytes\n";
+		}
 		if (number_bytes_sent < 0) {\
 			switch(errno){
 				case EMSGSIZE:
@@ -118,8 +129,10 @@ std::vector<uint8> RRAD::UDPSocket::read(std::string *newPeerIP, uint16 *newPeer
 	sockaddr *newPeerAddr_cast = (sockaddr *)&newPeerAddr;
 	socklen_t leng = sizeof(newPeerAddr_cast);
 	int number_bytes_read = recvfrom(sock, buffer, MESSAGE_LENGTH, 0, newPeerAddr_cast, &leng);
-	SOCKET_DESCRIPTOR(std::cout);
-	std::cout  << "recvfrom got " << number_bytes_read << " bytes" << std::endl;
+	if (_VERBOSE_UDPSOCKET_DEBUG) {
+		SOCKET_DESCRIPTOR(std::cout);
+		std::cout  << "recvfrom got " << number_bytes_read << " bytes" << std::endl;
+	}
 	if (number_bytes_read < 0){ //==0??
 		switch (errno){
 			case ETIMEDOUT:

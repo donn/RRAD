@@ -59,7 +59,6 @@ std::vector<uint8> RRAD::Connection::read() {
 }
 
 void RRAD::Connection::write(std::vector<uint8> data) {
-	std::cerr << "trying to write " << data.size() << " bytes\n";
     int transmissions = data.size() / MESSAGE_LENGTH;
     if (data.size() % MESSAGE_LENGTH) {
         transmissions += 1;
@@ -109,9 +108,7 @@ void RRAD::Connection::listen(std::function<void(Connection&)> operativeLoop) {
         std::vector<uint8> data;
         try {
             data = socketp->read(&ip, &port);
-			std::cerr << "got " << data.size() << " bytes\n";
         } catch (std::exception& exception) {
-			//std::cerr << "and then?\n";
             continue;
         }
 
