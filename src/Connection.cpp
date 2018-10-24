@@ -22,7 +22,7 @@ RRAD::Connection::Connection(std::string ip, uint16 port, int timeout, uint16 lo
     this->port = port;
     this->timeout = timeout;
 	socketp = new UDPSocket(ip, port, localPort);
-	socketp->setTimeout(timeout / 1000, timeout % 1000);
+	socketp->setTimeout(1, 0);
 }
 
 RRAD::Connection::~Connection() {
@@ -38,14 +38,28 @@ std::vector<uint8> RRAD::Connection::read() {
     uint16 port;
 
     uint16 lastAck = 0;
+    Packet acknowledgement;
+
     do {
-        data = socketp->read(&ip, &port);
+        int i = 0;
+        try {
+            while (i < timeout) {
+                data = socketp->read(&ip, &port);
+                break;
+            }
+        } catch (const char* error) {
+            i += 1;
+        }
+        if (i == timeout) {
+            CONNECTION_ERROR("conn.readTimeout");
+        }
         socketp->setPeerAddress(ip, port);
         packet = Packet::unpacking(data);
-        Packet acknowledgement = packet.acknowledge();
+        acknowledgement = packet.acknowledge();
 
         if (packet.seq() != lastAck && !(packet.seq() == 0xFFFF && packet.ack() == 0xFFFF)) {
-            CONNECTION_ERROR("conn.outOfOrder");
+            CONNECTION_DESCRIPTOR(std::cerr);
+            std::cerr << "Out of order packet dropped." << std::endl;
         }
 
         socketp->write(acknowledgement.packed());
