@@ -2,7 +2,6 @@
 ## Using library: nlohmann::json
 
 ## Assumptions
-* IP is constant for a user.
 * Request port is 9000 for peers.
     * ADS Request port is 10000 (for now).
 * ADS IP is provided with the terminal invocation. It will default to a yet unspecified value otherwise.
@@ -20,12 +19,12 @@ A `Dispatcher` class is used, which has a list of all networked objects in a has
 ## Marshalled as JSON
 ```js
 {
-    "senderIP": string,
-    "receiverIP": string,
+    "senderID": string,
+    "receiverID": string,
     "requestID": number,
     "request": boolean,
     "object": {
-        "ownerIP": string,
+        "ownerID": string,
         "unixTimestamp": number,
         "id": number,
         "class": string
@@ -37,7 +36,9 @@ A `Dispatcher` class is used, which has a list of all networked objects in a has
 }
 ```
 
-NOTE: Big binary blobs are marshalled as base64.
+If unixTimestamp = 0 && id = 0: You get a list.
+
+NOTE: Big binary blobs become basically marshalled to be base64.
 
 ## Work
 * Message class
