@@ -11,7 +11,8 @@
 All classes representing objects for use over the network should inherit from a superobject named `RemoteObject`. This doesn't maintain anything except mandate a virtual method.
 
 ```c++
-virtual JSON executeRPC(JSON arguments) = 0;
+virtual JSON executeRPC(std::string name, JSON arguments) = 0;
+virtual std::string getClassName() = 0; // For filtering purposes
 ```
 
 A `Dispatcher` class is used, which has a list of all networked objects in a hashmap. The dispatcher calls executeRPC. It is up to the individual classes to implement executeRPC.
