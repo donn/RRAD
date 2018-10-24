@@ -27,7 +27,7 @@ $(TEST_OBJ): $(BUILD_DIR)/%.o : %.cpp
 	$(CXX) $(CXX_FLAGS) -c -I $(HDR_DIR) -o $@ $<
 
 $(TEST_BIN): %.out : $(BUILD_DIR)/$(TEST_DIR)/%.o $(OBJ)
-	$(CXX) $(CXX_FLAGS) -I $(HDR_DIR) -o $@ $< $(OBJ) -lpthread
+	$(CXX) $(CXX_FLAGS) -lpthread -I $(HDR_DIR) -o $@ $< $(OBJ)
 
 .PHONY: clean
 clean:

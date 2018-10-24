@@ -2,7 +2,6 @@
 #define _vectorize_h
 
 #include <vector>
-#include <cstring>
 #include <string>
 
 #include "Types.h"

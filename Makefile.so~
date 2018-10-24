@@ -1,6 +1,6 @@
 CXX= c++
-CXX_FLAGS= -pedantic -std=c++17 -fPIC
-LINKER_FLAGS = -shared
+CXX_FLAGS= -pedantic -std=c++17
+LINKER_FLAGS = -fPIC -shared
 
 SRC_DIR = src
 BUILD_DIR = build
