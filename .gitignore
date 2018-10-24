@@ -4,3 +4,4 @@ server
 *.dSYM/
 *.out
 *.dylib
+*.so
