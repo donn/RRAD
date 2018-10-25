@@ -1,3 +1,4 @@
+#pragma clang diagnostic ignored "-Wlogical-op-parentheses"
 /*
     __ _____ _____ _____
  __|  |   __|     |   | |  JSON for Modern C++

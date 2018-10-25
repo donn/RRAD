@@ -15,6 +15,7 @@
         "istream": "cpp",
         "optional": "cpp",
         "vector": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "thread": "cpp"
     }
 }

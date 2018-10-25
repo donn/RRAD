@@ -1,12 +1,7 @@
-#if 0
 #include "Dispatcher.h"
 
 RRAD::Dispatcher::Dispatcher(uint16 port) {
     connection = RRAD::Connection("0.0.0.0", 0, 1000, port);
-}
-
-RRAD::Message RRAD::Dispatcher::getRequest() {
-    return RRAD::Message::getRequest(&connection);
 }
 
 RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
@@ -40,4 +35,17 @@ void RRAD::Dispatcher::destroyObject(JSON id) {
     dictionary.erase(id.dump());
     dictionaryMutex.unlock();
 }
-#endif
+
+void RRAD::Dispatcher::syncLoop() {
+    connection.listen([&](Connection* cn) {
+        auto request = Message::getRequest(cn);
+        auto reply = doOperation(request);
+        cn->write(reply.marshall());
+    });
+}
+
+void RRAD::Dispatcher::start() {
+    std::thread([&]() {
+        syncLoop();
+    });
+}

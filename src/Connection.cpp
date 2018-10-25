@@ -101,7 +101,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
     }
 }
 
-void RRAD::Connection::listen(std::function<void(Connection&)> operativeLoop) {
+void RRAD::Connection::listen(std::function<void(Connection*)> operativeLoop) {
     forever {
         std::string ip;
         uint16 port;
@@ -126,7 +126,7 @@ void RRAD::Connection::listen(std::function<void(Connection&)> operativeLoop) {
             std::thread task([=]() { //copying not referencing; after the detach, everything is lost
                 Connection connection(ip, port, timeout);
                 connection.socketp->write(echoBack);
-                operativeLoop(connection);
+                operativeLoop(&connection);
             });
             task.detach();
         } else {

@@ -19,7 +19,7 @@ namespace RRAD {
 
         std::vector<uint8> read();
         void write(std::vector<uint8> data);
-        void listen(std::function<void(Connection&)> operativeLoop);
+        void listen(std::function<void(Connection*)> operativeLoop);
 
         std::promise< std::vector<uint8> > getData();
         std::promise< bool > sendData(std::vector<uint8> data);

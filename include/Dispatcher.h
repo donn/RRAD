@@ -5,7 +5,6 @@
 #include "Message.h"
 
 namespace RRAD {
-
     class RemoteObject {
     public:
         virtual JSON executeRPC(std::string name, JSON arguments) = 0;
@@ -16,13 +15,14 @@ namespace RRAD {
         std::mutex dictionaryMutex;
         std::map<std::string, RemoteObject*> dictionary;
         Connection connection;
+
+        Message doOperation(Message message); 
     public:
         Dispatcher(uint16 port = 9000);
-        Message getRequest();
-        Message doOperation(Message message); 
         void registerObject(JSON id, RemoteObject* registree);
         void destroyObject(JSON id);
-        void sendReply();
+        void syncLoop();
+        void start();
     };
 };
 
