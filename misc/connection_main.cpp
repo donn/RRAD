@@ -7,8 +7,8 @@ using namespace RRAD;
 int main() {
 	Connection c("0.0.0.0", 44411, 0, 9001);
 
-	c.listen([&](Connection &cn){
-		auto blob = cn.read();
+	c.listen([&](Connection *cn){
+		auto blob = cn->read();
 		char transaction;
 		std::string s;
 		s = std::string(blob.begin(),blob.end());
@@ -19,12 +19,12 @@ int main() {
 
 			std::cout << "#####";
 			if (transaction == 'r'){
-				blob = cn.read();
+				blob = cn->read();
 				s = std::string(blob.begin(),blob.end());
 				std::cout << "P1: got " << s << std::endl;
 			} else {
 				s = "Last time got " + s;
-				cn.write (std::vector<uint8>(s.begin(), s.end()));
+				cn->write (std::vector<uint8>(s.begin(), s.end()));
 				std::cout << "P1: gonna send: " << s << std::endl;
 			}
 		}

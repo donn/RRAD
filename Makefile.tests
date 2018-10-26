@@ -6,7 +6,8 @@ TEST_DIR = misc
 HDR_DIR = include
 BUILD_DIR = build
 
-HDRS = $(shell find $(HDR_DIR) -name "*.h")
+LIB_HEADERS = $(shell find libinclude -name "*.h")
+HDRS = $(shell find $(HDR_DIR) -name "*.h")  $(LIB_HEADERS)
 
 SRCS = $(shell find $(SRC_DIR) -name "*.cpp")
 TEST_SRCS_STRIPPED = $(shell find $(TEST_DIR) -name "*.cpp" -exec basename \{} \;)
@@ -20,14 +21,14 @@ all: $(TEST_BIN)
 
 $(OBJ): $(BUILD_DIR)/%.o : %.cpp $(HDRS)
 	mkdir -p $(@D)
-	$(CXX) $(CXX_FLAGS) -c -I $(HDR_DIR) -o $@ $<
+	$(CXX) $(CXX_FLAGS) -c -Iinclude -Ilibinclude -o $@ $<
 
 $(TEST_OBJ): $(BUILD_DIR)/%.o : %.cpp
 	mkdir -p $(@D)
-	$(CXX) $(CXX_FLAGS) -c -I $(HDR_DIR) -o $@ $<
+	$(CXX) $(CXX_FLAGS) -c -Iinclude -Ilibinclude -o $@ $<
 
 $(TEST_BIN): %.out : $(BUILD_DIR)/$(TEST_DIR)/%.o $(OBJ)
-	$(CXX) $(CXX_FLAGS) -I $(HDR_DIR) -o $@ $< $(OBJ) -lpthread
+	$(CXX) $(CXX_FLAGS) -o $@ $< $(OBJ) -lpthread
 
 .PHONY: clean
 clean:

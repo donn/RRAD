@@ -8,13 +8,13 @@ using namespace RRAD;
 int main() {
 	Connection c("0.0.0.0", 0, 0, 9001);
 
-	c.listen([&](Connection &cn) {
+	c.listen([&](Connection *cn) {
 		std::cout << "Connection received, processing...\n";
-		auto blob = cn.read();
+		auto blob = cn->read();
 		std::string str(blob.begin(), blob.end());
 		std::cout << str << std::endl;
 
-		cn.write(vectorize("Then die!"));
+		cn->write(vectorize("Then die!"));
 	});
 	return 0;
 }

@@ -24,6 +24,6 @@ namespace RRAD {
         void syncLoop();
         void start();
     };
-};
+}
 
 #endif // _dispatcher_h

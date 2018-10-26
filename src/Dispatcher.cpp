@@ -5,7 +5,7 @@ RRAD::Dispatcher::Dispatcher(uint16 port) {
 }
 
 RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
-    auto object = message.getID();
+    auto object = message.getObject();
     if (object["id"] == 0 && object["unixTimestamp"] == 0) {
         auto array = JSON::array();
         for (auto ro: dictionary) {
