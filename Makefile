@@ -15,9 +15,9 @@ OBJECTS = $(addprefix build/, $(patsubst %.cpp,%.o,$(SOURCES)))
 
 OS = $(shell uname)
 ifeq ($(OS),Darwin)
-	LIB = rrac.dylib
+	LIB = rrad.dylib
 else
-	LIB = rrac.so
+	LIB = rrad.so
 endif
 all: debug
 
