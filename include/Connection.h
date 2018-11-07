@@ -12,7 +12,7 @@ namespace RRAD {
         std::string ip;
         uint16 port;
         int timeout;
-        UDPSocket *socketp; //using a pointer to evade the default constructor
+        std::shared_ptr<UDPSocket> socketp; //using a pointer to evade the default constructor
     public:
         Connection(std::string ip = "0.0.0.0", uint16 port = 0, int timeout = 1000, uint16 localPort = 0);
 		~Connection();

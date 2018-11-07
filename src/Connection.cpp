@@ -21,12 +21,11 @@ RRAD::Connection::Connection(std::string ip, uint16 port, int timeout, uint16 lo
     this->ip = ip;
     this->port = port;
     this->timeout = timeout;
-	socketp = new UDPSocket(ip, port, localPort);
+	socketp = std::shared_ptr<UDPSocket>(new UDPSocket(ip, port, localPort));
 	socketp->setTimeout(timeout / 1000, timeout % 1000);
 }
 
 RRAD::Connection::~Connection() {
-	delete socketp;
 }
 
 std::vector<uint8> RRAD::Connection::read() {
