@@ -1,7 +1,7 @@
 #include "Dispatcher.h"
 
 RRAD::Dispatcher::Dispatcher(uint16 port) {
-    connection = RRAD::Connection("0.0.0.0", 0, 1000, port);
+    connection = RRAD::Connection("0.0.0.0", 0, 0, port);
 }
 
 RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
