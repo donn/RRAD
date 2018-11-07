@@ -23,6 +23,8 @@ namespace RRAD {
         void destroyObject(JSON id);
         void syncLoop();
         void start();
+
+        static Dispatcher singleton;
     };
 }
 
