@@ -16,7 +16,7 @@ RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
         for (auto ro: dictionary) {
             auto& iterable = *ro.second;
             if (iterable.getClassName() == object["class"]) {
-                array.push_back(iterable.executeRPC(message.getOperation(), message.getArguments()));
+                array.push_back(JSON::parse(ro.first));
             }
         }
         return message.generateReply(array);
@@ -49,10 +49,11 @@ void RRAD::Dispatcher::syncLoop() {
             auto reply = doOperation(request);
             cn->write(reply.marshall());
         } catch (const char* err) {
-            std::cout << "Failed to honor request from " << cn->ip << ": " << err << "{" << std::endl;
+            std::cout << "Failed to honor request from " << cn->ip << ": " << err << ": Dump" << std::endl;
             if (request.msg_json["senderID"] != "string") {
                 std::cout << request.msg_json.dump();
             }
+            std::cout << std::endl << std::endl;
         }
     });
 }
