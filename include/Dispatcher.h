@@ -17,7 +17,8 @@ namespace RRAD {
         std::mutex dictionaryMutex;
         std::map<std::string, RemoteObject*> dictionary;
         Connection connection;
-
+        uint16 port;
+        
         Message doOperation(Message message); 
     public:
         Dispatcher(std::string userName, uint16 port = 9000);
