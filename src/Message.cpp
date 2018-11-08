@@ -139,8 +139,10 @@ RRAD::Message RRAD::Message::unmarshall(std::vector<uint8> bytes){
 RRAD::Message RRAD::Message::getRequest(Connection *connection){
     std::vector<uint8> message_bytes = connection->read();
     Message request = unmarshall(message_bytes);
-    if (!request.isRequest())
-        throw "Invalid.Request";
+    if (!request.isRequest()) {
+        throw "message.notRequest";
+    }
+    request.msg_json["operationData"]["__RRAD__INTERNAL__senderIP"] = connection->ip; // Hack lmao
     return request;
 }
 
