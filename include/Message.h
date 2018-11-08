@@ -10,24 +10,10 @@ using JSON = nlohmann::json;
 
 namespace RRAD {
     class Message {
+    public:
         JSON msg_json;
-public:
         Message();
-        Message(std::string senderID, std::string senderPW, std::string receiverID, bool request,
-        uint32 requestID, JSON object, std::string operationName, JSON data);
         Message(JSON msg_json);
-
-        void setSenderID(std::string senderID);
-        void setSenderPW(std::string senderPW);
-        void setReceiverID(std::string receiverID);
-        void setRequestID(uint32 requestID);
-        void setRequest(bool request);
-
-        void setObject(JSON object);
-        void setObjectTimestamp(uint32 num);
-
-        void setOperationName(std::string name);
-        void setOperationData(JSON data);
 
         //getters as needed
         bool isRequest();
@@ -41,8 +27,6 @@ public:
 
         static Message getRequest(Connection* connection); // Read and unmarshal JSON from connection
         Message generateReply(JSON returnData);
-
-
     };
 }
 

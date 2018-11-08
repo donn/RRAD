@@ -40,68 +40,28 @@ bool isValidFormat(JSON candidate_content){
 RRAD::Message::Message(){
     *this = Message(req_msg_format);
 }
-
-RRAD::Message::Message(std::string senderID, std::string senderPW, std::string receiverID, bool request,
-        uint32 requestID, JSON object, std::string operationName, JSON data){
-    setSenderID(senderID);
-    setSenderPW(senderPW);
-    setReceiverID(receiverID);
-    setRequestID(requestID);
-    setRequest(request);
-
-    setObject(object);
-    
-    setOperationName(operationName);
-    setOperationData(data);
-}
-
 RRAD::Message::Message(JSON msg_json){
     if(!isValidFormat(msg_json))
         throw "Invalid.Msg.JSON";
     this->msg_json = msg_json;
 }
-
-//setters
-void RRAD::Message::setSenderID(std::string senderID){
-    msg_json["senderID"] = senderID;
+std::vector<uint8> RRAD::Message::marshall(){
+    std::string serialized_content = msg_json.dump();
+    std::vector<uint8> marshalled_bytes(serialized_content.begin(), serialized_content.end());
+    return marshalled_bytes;
 }
 
-void RRAD::Message::setSenderPW(std::string senderPW){
-    msg_json["senderPW"] = senderPW;
-}
+RRAD::Message RRAD::Message::unmarshall(std::vector<uint8> bytes){
+    JSON msg_json;
 
-void RRAD::Message::setReceiverID(std::string receiverID){
-    msg_json["receiverID"] = receiverID;
-}
+    try {
+        msg_json = JSON::parse(bytes);
+    } catch (JSON::parse_error& e){
+        std::cerr << "Error: " << e.what() << "\n"
+                << "byte position of error: " << e.byte << std::endl;
+    }
 
-void RRAD::Message::setRequestID(uint32 requestID){
-    msg_json["requestID"] = requestID;
-}
-
-void RRAD::Message::setRequest(bool request){
-    msg_json["request"] = request;
-}
-
-void RRAD::Message::setObject(JSON object){
-    object["unixTimestamp"] = time(nullptr);
-    msg_json["object"] = object;
-}
-
-void RRAD::Message::setObjectTimestamp(uint32 num){
-    msg_json["unixTimestamp"] = num;
-}
-
-void RRAD::Message::setOperationName(std::string name){
-    msg_json["operation"]["name"] = name;
-}
-
-void RRAD::Message::setOperationData(JSON data){
-    msg_json["operation"]["data"] = data;
-}
-
-//getters
-bool RRAD::Message::isRequest(){
-    return msg_json["request"];
+    return Message(msg_json);
 }
 
 JSON RRAD::Message::getObject(){
@@ -116,30 +76,11 @@ JSON RRAD::Message::getArguments(){
     return msg_json["operation"]["data"];
 }
 
-std::vector<uint8> RRAD::Message::marshall(){
-    std::string serialized_content = msg_json.dump();
-    std::vector<uint8> marshalled_bytes(serialized_content.begin(), serialized_content.end());
-    return marshalled_bytes;
-}
-
-RRAD::Message RRAD::Message::unmarshall(std::vector<uint8> bytes){
-    JSON msg_json;
-
-    try {
-        msg_json = JSON::parse(bytes);
-    } catch (JSON::parse_error& e){
-        std::cerr << "Error: " << e.what() << '\n'
-                << "byte position of error: " << e.byte << std::endl;
-    }
-
-    return Message(msg_json);
-}
-
 // Read and unmarshal JSON from connection
 RRAD::Message RRAD::Message::getRequest(Connection *connection){
     std::vector<uint8> message_bytes = connection->read();
     Message request = unmarshall(message_bytes);
-    if (!request.isRequest()) {
+    if (!request.msg_json["request"]) {
         throw "message.notRequest";
     }
     request.msg_json["operationData"]["__RRAD__INTERNAL__senderIP"] = connection->ip; // Hack lmao
@@ -149,8 +90,8 @@ RRAD::Message RRAD::Message::getRequest(Connection *connection){
 RRAD::Message RRAD::Message::generateReply(JSON returnData){
     //consider a later size optimization by removing unncessary fields
     Message reply(msg_json);
-    reply.setRequest(false);
-    reply.setOperationData(returnData);
+    reply.msg_json["reply"] = false;
+    reply.msg_json["operation"]["data"] = returnData;
 
     return reply;
 }
