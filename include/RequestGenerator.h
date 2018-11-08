@@ -13,6 +13,7 @@ namespace RRAD {
         RequestGenerator(std::string userName): userName(userName) {}
         Message requestList(std::string className, std::string targetUser);
         Message requestRMI(std::string className, std::string targetUser, JSON id, std::string method, JSON arguments);
+        std::string getUserName() { return userName; }
     };
 }
 
