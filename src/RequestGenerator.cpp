@@ -17,7 +17,7 @@ RRAD::Message RRAD::RequestGenerator::rmi(std::string className, std::string tar
     auto message = listRPC(className, targetUser);
     message.msg_json["object"] = id;
     message.msg_json["operation"]["name"] = method;
-    message.msg_json["operation"]["arguments"] = arguments;
+    message.msg_json["operation"]["data"] = arguments;
     return message;
 }
 
