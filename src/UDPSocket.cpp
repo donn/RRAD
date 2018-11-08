@@ -12,11 +12,11 @@
 #include <arpa/inet.h>
 
 #define SOCKET_DESCRIPTOR(stream) do { \
-	stream << "[UDPSocket $" << this << " to (@" << myPort << " -> " << peerAddress << ":" << peerPort << ", fd " << sock << ")] "; \
+	stream << "UDPSocket $" << this << " to (@" << myPort << " -> " << peerAddress << ":" << peerPort << ", fd " << sock << ")] "; \
 } while (0);
 
 #define SOCKET_ERROR(message) do { \
-	std::cerr << "ERROR: "; \
+	std::cerr << "[RRAD] ERROR: "; \
 	SOCKET_DESCRIPTOR(std::cerr); \
 	std::cerr << message << std::endl; \
 	throw message; \

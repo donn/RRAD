@@ -16,6 +16,7 @@
         "optional": "cpp",
         "vector": "cpp",
         "iostream": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "queue": "cpp"
     }
 }

@@ -4,6 +4,9 @@
 #include "Types.h"
 #include "Message.h"
 
+#include <queue>
+#include <optional>
+
 namespace RRAD {
     class RemoteObject {
     public:
@@ -15,19 +18,28 @@ namespace RRAD {
     };
 
     class Dispatcher {
-        std::string userName;
         std::mutex dictionaryMutex;
         std::map<std::string, RemoteObject*> dictionary;
+        std::map<std::string, std::queue<Message> > forwardQueues;
+
         Connection connection;
         uint16 port;
+
+        std::string userName;
+        bool forwardingEnabled;
         
-        Message doOperation(Message message); 
+        std::optional<RRAD::Message> doOperation(Message message); 
     public:
-        Dispatcher(std::string userName, uint16 port = 9000);
+        Dispatcher(std::string userName, uint16 port = 9000, bool forwardingEnabled = false);
+
+        void forwardRequests(std::string target, std::string ip, uint16 port);
+
         void registerObject(JSON id, RemoteObject* registree);
         void destroyObject(JSON id);
+        
         void syncLoop();
-        void start();
+        void start(); //async
+
         std::string getUID() { return userName; }
 
         static Dispatcher singleton;

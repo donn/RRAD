@@ -11,7 +11,7 @@
 } while (0);
 
 #define CONNECTION_ERROR(message) do { \
-	std::cerr << "ERROR: "; \
+	std::cerr << "[RRAD] ERROR: "; \
 	CONNECTION_DESCRIPTOR(std::cerr); \
 	std::cerr << ": " << message << std::endl; \
 	throw message; \
