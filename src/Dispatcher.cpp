@@ -4,6 +4,7 @@ RRAD::Dispatcher::Dispatcher(std::string userName, uint16 port) {
     this->userName = userName;
     port = port;
     connection = RRAD::Connection("0.0.0.0", 0, 0, port);
+    std::cout << "[RRAD] Dispatcher connection opened on port " << port << "." << std::endl;
 }
 
 RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
@@ -49,7 +50,6 @@ void RRAD::Dispatcher::syncLoop() {
 #include <iostream>
 
 void RRAD::Dispatcher::start() {
-    std::cout << "[RRAD] Dispatcher now listening on port " << port << "." << std::endl;
     std::thread([&]() {
         syncLoop();
     });
