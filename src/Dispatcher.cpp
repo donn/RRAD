@@ -1,6 +1,7 @@
 #include "Dispatcher.h"
 
-RRAD::Dispatcher::Dispatcher(uint16 port) {
+RRAD::Dispatcher::Dispatcher(std::string userName, uint16 port) {
+    this->userName = userName;
     connection = RRAD::Connection("0.0.0.0", 0, 0, port);
 }
 

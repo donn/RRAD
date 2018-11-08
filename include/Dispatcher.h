@@ -13,17 +13,19 @@ namespace RRAD {
     };
 
     class Dispatcher {
+        std::string userName;
         std::mutex dictionaryMutex;
         std::map<std::string, RemoteObject*> dictionary;
         Connection connection;
 
         Message doOperation(Message message); 
     public:
-        Dispatcher(uint16 port = 9000);
+        Dispatcher(std::string userName, uint16 port = 9000);
         void registerObject(JSON id, RemoteObject* registree);
         void destroyObject(JSON id);
         void syncLoop();
         void start();
+        std::string getUID() { return userName; }
 
         static Dispatcher singleton;
     };
