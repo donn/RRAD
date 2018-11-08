@@ -9,7 +9,9 @@ namespace RRAD {
     public:
         JSON listRequest();
         virtual JSON executeRPC(std::string name, JSON arguments) = 0;
-        virtual std::string getClassName() = 0;
+        virtual std::string getClassName(){
+            return typeid(*this).name();
+        };
     };
 
     class Dispatcher {
