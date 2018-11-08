@@ -1,5 +1,7 @@
 #include "Dispatcher.h"
 
+#include <iostream>
+
 RRAD::Dispatcher::Dispatcher(std::string userName, uint16 port) {
     this->userName = userName;
     port = port;
@@ -46,8 +48,6 @@ void RRAD::Dispatcher::syncLoop() {
         cn->write(reply.marshall());
     });
 }
-
-#include <iostream>
 
 void RRAD::Dispatcher::start() {
     std::thread([&]() {
