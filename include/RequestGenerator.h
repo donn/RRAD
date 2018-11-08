@@ -7,9 +7,12 @@
 
 namespace RRAD {
     class RequestGenerator {
+        std::string userName;
         uint64 requestCounter = 0;
     public:
+        RequestGenerator(std::string userName): userName(userName) {}
         Message requestList(std::string className, std::string targetUser);
+        Message requestRMI(std::string className, std::string targetUser, JSON id, std::string method, JSON arguments);
     };
 }
 
