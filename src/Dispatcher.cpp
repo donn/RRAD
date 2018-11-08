@@ -43,9 +43,13 @@ void RRAD::Dispatcher::destroyObject(JSON id) {
 
 void RRAD::Dispatcher::syncLoop() {
     connection.listen([&](Connection* cn) {
-        auto request = Message::getRequest(cn);
-        auto reply = doOperation(request);
-        cn->write(reply.marshall());
+        try {
+            auto request = Message::getRequest(cn);
+            auto reply = doOperation(request);
+            cn->write(reply.marshall());
+        } catch (const char* err) {
+            std::cout << "Failed to honor request from " << cn->ip << ": " << err << std::endl;
+        }
     });
 }
 
