@@ -43,8 +43,8 @@ RRAD::Packet RRAD::Packet::initializer() {
 
 RRAD::Packet RRAD::Packet::terminator() {
     Packet packet = Packet();
-    packet.sequence = 0xFFFF;
-    packet.acknowledgement = 0xFFFF;
+    packet.sequence = SEQACK_MAX;
+    packet.acknowledgement = SEQACK_MAX;
     packet.internalData = {};
     return packet;
 }
@@ -80,6 +80,5 @@ RRAD::Packet RRAD::Packet::acknowledge() {
 }
 #include <iostream>
 bool RRAD::Packet::confirmAcknowledgement(Packet acknowledgementPacket) {
-    std::cout << "comparing seq " << sequence + internalData.size() << " to ack " << acknowledgementPacket.ack() << std::endl;
     return (acknowledgementPacket.ack() == sequence + internalData.size());
 }
