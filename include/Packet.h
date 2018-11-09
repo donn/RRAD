@@ -7,11 +7,16 @@
 #include <optional>
 #include <errno.h>
 
+#define SEQACK_LENGTH 8
+#define SEQACK_T uint64
+#define SEQACK_MAX 0xFFFFFFFFFFFFFFFF
+#define PACKET_OVERHEAD (SEQACK_LENGTH * 2)
+
 namespace RRAD {
     class Packet {
         std::vector<uint8> internalData;
-        uint16 acknowledgement;
-        uint16 sequence;
+        SEQACK_T acknowledgement;
+        SEQACK_T sequence;
     public:
         Packet();
         Packet(std::vector<uint8> data, std::optional<Packet> following = std::nullopt);
@@ -20,8 +25,8 @@ namespace RRAD {
         static Packet initializer();
         static Packet terminator();
 
-        uint16 seq() { return sequence; }
-        uint16 ack() { return acknowledgement; }
+        SEQACK_T seq() { return sequence; }
+        SEQACK_T ack() { return acknowledgement; }
         std::vector<uint8> body() { return internalData; }
 
         std::vector<uint8> packed();

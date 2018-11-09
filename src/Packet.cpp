@@ -13,8 +13,8 @@ RRAD::Packet::Packet(std::vector<uint8> data, std::optional<Packet> following) {
     }
 }
 
-static int assemble(uint8* pointer, int count) {
-    int assembled = 0;
+static SEQACK_T assemble(uint8* pointer, int count) {
+    SEQACK_T assembled = 0;
     for (int i = 0; i < count; i += 1) {
         assembled |= pointer[i] << (8 * i);
     }
@@ -23,10 +23,10 @@ static int assemble(uint8* pointer, int count) {
 
 RRAD::Packet RRAD::Packet::unpacking(std::vector<uint8> data) {
     Packet packet = Packet();
-    packet.sequence = assemble(&data[0], 2);
-    packet.acknowledgement = assemble(&data[2], 2);
+    packet.sequence = assemble(&data[0], SEQACK_LENGTH);
+    packet.acknowledgement = assemble(&data[SEQACK_LENGTH], SEQACK_LENGTH);
 
-    auto beginning = data.begin() + 4;
+    auto beginning = data.begin() + PACKET_OVERHEAD;
     auto end = data.end();
 
     packet.internalData = std::vector<uint8>(beginning, end);
@@ -49,7 +49,7 @@ RRAD::Packet RRAD::Packet::terminator() {
     return packet;
 }
 
-static std::vector<uint8> disassemble(int value, int count) {
+static std::vector<uint8> disassemble(SEQACK_T value, int count) {
     std::vector<uint8> bytes = std::vector<uint8>();
     while (count--) {
         bytes.push_back(value & 0xFF);
@@ -61,8 +61,8 @@ static std::vector<uint8> disassemble(int value, int count) {
 std::vector<uint8> RRAD::Packet::packed() {
     std::vector<uint8> data;
 
-    auto packedSequence = disassemble(sequence, 2);
-    auto packedAcknowledgement = disassemble(acknowledgement, 2);
+    auto packedSequence = disassemble(sequence, SEQACK_LENGTH);
+    auto packedAcknowledgement = disassemble(acknowledgement, SEQACK_LENGTH);
     
     data.insert(data.end(), packedSequence.begin(), packedSequence.end());
     data.insert(data.end(), packedAcknowledgement.begin(), packedAcknowledgement.end());
@@ -78,7 +78,8 @@ RRAD::Packet RRAD::Packet::acknowledge() {
     packet.internalData = std::vector<uint8>(0);
     return packet;
 }
-
+#include <iostream>
 bool RRAD::Packet::confirmAcknowledgement(Packet acknowledgementPacket) {
+    std::cout << "comparing seq " << sequence + internalData.size() << " to ack " << acknowledgementPacket.ack() << std::endl;
     return (acknowledgementPacket.ack() == sequence + internalData.size());
 }

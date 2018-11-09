@@ -36,14 +36,14 @@ std::vector<uint8> RRAD::Connection::read() {
     std::string ip;
     uint16 port;
 
-    uint16 lastAck = 0;
+    SEQACK_T lastAck = 0;
     do {
         data = socketp->read(&ip, &port);
         socketp->setPeerAddress(ip, port);
         packet = Packet::unpacking(data);
         Packet acknowledgement = packet.acknowledge();
 
-        if (packet.seq() != lastAck && !(packet.seq() == 0xFFFF && packet.ack() == 0xFFFF)) {
+        if (packet.seq() != lastAck && !(packet.seq() == SEQACK_MAX && packet.ack() == SEQACK_MAX)) {
             CONNECTION_ERROR("conn.outOfOrder");
         }
 
@@ -53,12 +53,12 @@ std::vector<uint8> RRAD::Connection::read() {
         auto unpackedData = packet.body();
         assembled.insert(std::end(assembled), std::begin(unpackedData), std::end(unpackedData));
 
-    } while (packet.seq() != 0xFFFF || packet.ack() != 0xFFFF);
+    } while (packet.seq() != SEQACK_MAX || packet.ack() != SEQACK_MAX);
     return assembled;
 }
 
 void RRAD::Connection::write(std::vector<uint8> data) {
-    auto trueMessageLength = MESSAGE_LENGTH - 4;
+    auto trueMessageLength = MESSAGE_LENGTH - PACKET_OVERHEAD;
     int transmissions = data.size() / trueMessageLength;
     if (data.size() % trueMessageLength) {
         transmissions += 1;
