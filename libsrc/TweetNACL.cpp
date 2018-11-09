@@ -1,4 +1,6 @@
 #include "tweetnacl.h"
+#include <random>
+
 #define FOR(i,n) for (i = 0;i < n;++i)
 #define sv static void
 
@@ -7,7 +9,16 @@ typedef unsigned long u32;
 typedef unsigned long long u64;
 typedef long long i64;
 typedef i64 gf[16];
-extern void randombytes(u8 *,u64);
+
+//This part has been modified from the original TweetNACL.
+void randombytes(unsigned char* buffer, unsigned long long count) {
+    static std::random_device generator;
+    static std::uniform_int_distribution<unsigned char> distribution(0,255);
+    for (unsigned long long i = 0; i < count; i += 1) {
+        buffer[i] = distribution(generator);
+    }
+}
+//--END OF MODIFICATION--
 
 static const u8
   _0[16],
