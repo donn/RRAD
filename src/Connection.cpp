@@ -58,8 +58,9 @@ std::vector<uint8> RRAD::Connection::read() {
 }
 
 void RRAD::Connection::write(std::vector<uint8> data) {
-    int transmissions = data.size() / MESSAGE_LENGTH;
-    if (data.size() % MESSAGE_LENGTH) {
+    auto trueMessageLength = MESSAGE_LENGTH - 4;
+    int transmissions = data.size() / trueMessageLength;
+    if (data.size() % trueMessageLength) {
         transmissions += 1;
     }
     std::vector<uint8> sendable;
@@ -79,8 +80,8 @@ void RRAD::Connection::write(std::vector<uint8> data) {
         Packet newPacket;
 
         if (i != transmissions) {
-            std::vector<uint8>::const_iterator beginning = data.begin() + i * MESSAGE_LENGTH;
-            std::vector<uint8>::const_iterator end = data.begin() + (i + 1) * MESSAGE_LENGTH;
+            std::vector<uint8>::const_iterator beginning = data.begin() + i * trueMessageLength;
+            std::vector<uint8>::const_iterator end = data.begin() + (i + 1) * trueMessageLength;
             if (end > data.end()) {
                 end = data.end();
             }
