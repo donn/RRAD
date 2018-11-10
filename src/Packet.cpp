@@ -41,12 +41,20 @@ RRAD::Packet RRAD::Packet::initializer() {
     return packet;
 }
 
+bool RRAD::Packet::isInitializer() {
+    return sequence == 0x0 && acknowledgement == 0x0;
+}
+
 RRAD::Packet RRAD::Packet::terminator() {
     Packet packet = Packet();
     packet.sequence = SEQACK_MAX;
     packet.acknowledgement = SEQACK_MAX;
     packet.internalData = {};
     return packet;
+}
+
+bool RRAD::Packet::isTerminator() {
+    return sequence == SEQACK_MAX && acknowledgement == SEQACK_MAX;
 }
 
 static std::vector<uint8> disassemble(SEQACK_T value, int count) {
@@ -78,7 +86,6 @@ RRAD::Packet RRAD::Packet::acknowledge() {
     packet.internalData = std::vector<uint8>(0);
     return packet;
 }
-#include <iostream>
 bool RRAD::Packet::confirmAcknowledgement(Packet acknowledgementPacket) {
     return (acknowledgementPacket.ack() == sequence + internalData.size());
 }

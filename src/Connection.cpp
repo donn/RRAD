@@ -30,7 +30,7 @@ RRAD::Connection::~Connection() {
 
 std::vector<uint8> RRAD::Connection::read() {
     std::vector<uint8> assembled;
-    std::vector<uint8> data;
+    std::vector<uint8> readdata;
     Packet packet;
 
     std::string ip;
@@ -38,9 +38,9 @@ std::vector<uint8> RRAD::Connection::read() {
 
     SEQACK_T lastAck = 0;
     do {
-        data = socketp->read(&ip, &port);
+        readdata = socketp->read(&ip, &port);
         socketp->setPeerAddress(ip, port);
-        packet = Packet::unpacking(data);
+        packet = Packet::unpacking(readdata);
         Packet acknowledgement = packet.acknowledge();
 
         if (packet.seq() != lastAck && !(packet.seq() == SEQACK_MAX && packet.ack() == SEQACK_MAX)) {
@@ -65,6 +65,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
     }
     std::vector<uint8> sendable;
     std::optional<Packet> lastPacket = std::nullopt;
+    std::vector<uint8> readdata;
 
     std::string newIP;
     uint16 newPort;
@@ -92,7 +93,8 @@ void RRAD::Connection::write(std::vector<uint8> data) {
         }
         
         socketp->write(newPacket.packed());
-        Packet acknowledgement = Packet::unpacking(socketp->read());
+        readdata = socketp->read();
+        Packet acknowledgement = Packet::unpacking(readdata);
         bool confirmedAcknowledgement = newPacket.confirmAcknowledgement(acknowledgement);
         if (!confirmedAcknowledgement) {
             CONNECTION_ERROR("conn.outOfOrder");

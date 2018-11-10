@@ -23,7 +23,9 @@ namespace RRAD {
         
         static Packet unpacking(std::vector<uint8> data);
         static Packet initializer();
+        bool isInitializer();
         static Packet terminator();
+        bool isTerminator();
 
         SEQACK_T seq() { return sequence; }
         SEQACK_T ack() { return acknowledgement; }
