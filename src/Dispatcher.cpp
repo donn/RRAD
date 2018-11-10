@@ -17,6 +17,7 @@ void RRAD::Dispatcher::setUID(std::string newUID) {
         if (changedOnce++) {
             throw "dispatcher.userNameAlreadySet";
         }
+        userName = newUID;
     }
 }
 
@@ -149,7 +150,7 @@ RRAD::Message RRAD::Dispatcher::listRPC(std::string className, std::string targe
     message.msg_json["object"]["id"] = 0;
     message.msg_json["object"]["class"] = className;
     message.msg_json["operation"]["name"] = "__DEVE__LIST";
-    message.msg_json["operation"]["data"] = "__DEVE__LIST";
+    message.msg_json["operation"]["data"] = {};
     return message;
 }
 
