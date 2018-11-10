@@ -5,6 +5,7 @@
 // CPP STL
 #include <string>
 #include <iostream>
+#include <exception>
 
 // POSIX
 #include <unistd.h> 
@@ -19,7 +20,7 @@
 	std::cerr << "[RRAD] ERROR: "; \
 	SOCKET_DESCRIPTOR(std::cerr); \
 	std::cerr << message << std::endl; \
-	throw message; \
+	throw std::runtime_error(message); \
 } while (0);
 
 #ifndef _VERBOSE_UDPSOCKET_DEBUG
@@ -93,14 +94,14 @@ void RRAD::UDPSocket::write(std::vector<uint8> buffer){
 
 	if (msgLength > MESSAGE_LENGTH) {
 		std::cerr << "Write too large." << std::endl;
-		throw "write.tooLargeForRRAD";
-	} else { //attempt to send
+		throw std::runtime_error("write.tooLargeForRRAD");
+	} else {
 		int number_bytes_sent = sendto(sock, &buffer[0], msgLength, 0, peerAddr_cast, sizeof(struct sockaddr));
 		if (_VERBOSE_UDPSOCKET_DEBUG) {
 			SOCKET_DESCRIPTOR(std::cout);
 			std::cerr  << "sendto sent " << number_bytes_sent << " bytes\n";
 		}
-		if (number_bytes_sent < 0) {\
+		if (number_bytes_sent < 0) {
 			switch(errno){
 				case EMSGSIZE:
 					SOCKET_ERROR("write.tooLargeForSocket");
@@ -133,7 +134,7 @@ std::vector<uint8> RRAD::UDPSocket::read(std::string *newPeerIP, uint16 *newPeer
 		SOCKET_DESCRIPTOR(std::cout);
 		std::cout  << "recvfrom got " << number_bytes_read << " bytes" << std::endl;
 	}
-	if (number_bytes_read < 0){ //==0??
+	if (number_bytes_read < 0){
 		switch (errno){
 			case ETIMEDOUT:
 			case EAGAIN:

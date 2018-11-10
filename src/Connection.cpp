@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <iostream>
+#include <exception>
 
 #define forever for(;;)
 
@@ -43,7 +44,7 @@ std::vector<uint8> RRAD::Connection::read() {
         packet = Packet::unpacking(readdata);
         Packet acknowledgement = packet.acknowledge();
 
-        if (packet.seq() != lastAck && !(packet.seq() == SEQACK_MAX && packet.ack() == SEQACK_MAX)) {
+        if (packet.seq() != lastAck && !packet.isTerminator()) {
             CONNECTION_ERROR("conn.outOfOrder");
         }
 
