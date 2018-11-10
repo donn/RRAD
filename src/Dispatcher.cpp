@@ -11,6 +11,15 @@ RRAD::Dispatcher::Dispatcher(std::string userName, uint16 port, bool forwardingE
     this->forwardingEnabled = forwardingEnabled;
 }
 
+void RRAD::Dispatcher::setUID(std::string newUID) {
+    static int changedOnce = 0;
+    if (userName != newUID) {
+        if (changedOnce++) {
+            throw "dispatcher.userNameAlreadySet";
+        }
+    }
+}
+
 void RRAD::Dispatcher::forwardRequests(std::string userName, std::string ip, uint16 port) {
     std::thread thread = std::thread([&]() {
         auto cn = RRAD::Connection(ip, port);
@@ -45,13 +54,17 @@ std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
     // Request realm
     auto object = message.getObject();
 
+    if (cm) {
+        cm->verifyArguments(&message.msg_json["operation"]);
+    }
+
     if (object["id"] == 0 && object["unixTimestamp"] == 0) {
         auto array = JSON::array();
         for (auto ro: dictionary) {
-            auto& iterable = *ro.second;
+            auto& iterable = *ro.second.second;
             if (
                 iterable.getClassName() == object["class"]
-                && userName == object["ownerID"]
+                && ro.second.first
             ) {
                 array.push_back(JSON::parse(ro.first));
             }
@@ -65,7 +78,7 @@ std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
         return message.generateReply({"error", "objectNotFound"});
     }
 
-    auto& target = *dictionary[object.dump()];
+    auto& target = *dictionary[object.dump()].second;
     auto result = message.generateReply(target.executeRPC(message.getOperation(), message.getArguments()));
     if (message.getOperation().find("__") == 0) {
         return std::nullopt;
@@ -73,15 +86,17 @@ std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
     return result;
 }
 
-void RRAD::Dispatcher::registerObject(JSON id, RemoteObject* registree) {
+void RRAD::Dispatcher::registerObject(JSON id, RemoteObject* registree, bool owned) {
     dictionaryMutex.lock();
-    dictionary[id.dump()] = registree;
+    dictionary[id.dump()] = std::pair(owned, registree);
     dictionaryMutex.unlock();
 }
 
 void RRAD::Dispatcher::destroyObject(JSON id) {
     dictionaryMutex.lock();
-    dictionary.erase(id.dump());
+    auto idString = id.dump();
+    delete dictionary[idString].second;
+    dictionary.erase(idString);
     dictionaryMutex.unlock();
 }
 
@@ -108,4 +123,50 @@ void RRAD::Dispatcher::start() {
     std::thread([&]() {
         syncLoop();
     });
+}
+
+std::vector<RRAD::RemoteObject*> RRAD::Dispatcher::listMine(std::string className) {
+    std::vector<RRAD::RemoteObject*> vec;
+    for (auto ro: dictionary) {
+        auto& iterable = *ro.second.second;
+        if (
+            iterable.getClassName() == className
+            && ro.second.first
+        ) {
+            vec.push_back(ro.second.second);
+        }
+    }
+    return vec;
+}
+
+RRAD::Message RRAD::Dispatcher::listRPC(std::string className, std::string targetUser) {
+    auto message = RRAD::Message();
+    message.msg_json["senderID"] = userName;
+    message.msg_json["receiverID"] = targetUser;
+    message.msg_json["requestID"] = requestCounter++;
+    message.msg_json["object"]["ownerID"] = targetUser;
+    message.msg_json["object"]["unixTimestamp"] = 0;
+    message.msg_json["object"]["id"] = 0;
+    message.msg_json["object"]["class"] = className;
+    message.msg_json["operation"]["name"] = "__DEVE__LIST";
+    message.msg_json["operation"]["data"] = "__DEVE__LIST";
+    return message;
+}
+
+RRAD::Message RRAD::Dispatcher::rmi(std::string className, std::string targetUser, JSON id, std::string method, JSON arguments) {
+    auto message = listRPC(className, targetUser);
+    message.msg_json["object"] = id;
+    message.msg_json["operation"]["name"] = method;
+    message.msg_json["operation"]["data"] = arguments;
+    return message;
+}
+
+JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::Message rmi) {
+    if (cm) {
+        cm->encodeArguments(&rmi.msg_json["operation"]);
+    }
+    auto conn = RRAD::Connection(targetIP, port);
+    conn.write(rmi.marshall());
+    auto reply = RRAD::Message::unmarshall(conn.read());
+    return reply.getArguments();
 }
