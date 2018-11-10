@@ -24,6 +24,8 @@ namespace RRAD {
         static Packet unpacking(std::vector<uint8> data);
         static Packet initializer();
         bool isInitializer();
+        static Packet nack();
+        bool isNack();
         static Packet terminator();
         bool isTerminator();
 

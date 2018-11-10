@@ -5,3 +5,4 @@ server
 *.out
 *.dylib
 *.so
+./compile_commands.json

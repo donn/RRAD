@@ -6,7 +6,7 @@ RRAD::Packet::Packet(std::vector<uint8> data, std::optional<Packet> following) {
     if (following.has_value()) {
         auto predecessor = following.value();
         acknowledgement = predecessor.ack();
-        sequence = predecessor.seq() + predecessor.body().size(); 
+        sequence = predecessor.seq() + predecessor.body().size();
     } else {
         acknowledgement = 0;
         sequence = 0;
@@ -45,6 +45,18 @@ bool RRAD::Packet::isInitializer() {
     return sequence == 0x0 && acknowledgement == 0x0;
 }
 
+RRAD::Packet RRAD::Packet::nack() {
+    Packet packet = Packet();
+    packet.sequence = SEQACK_MAX-1;
+    packet.acknowledgement = SEQACK_MAX-1;
+    packet.internalData = {};
+    return packet;
+}
+
+bool RRAD::Packet::isNack() {
+    return sequence == SEQACK_MAX-1 && acknowledgement == SEQACK_MAX-1;
+}
+
 RRAD::Packet RRAD::Packet::terminator() {
     Packet packet = Packet();
     packet.sequence = SEQACK_MAX;
@@ -71,7 +83,7 @@ std::vector<uint8> RRAD::Packet::packed() {
 
     auto packedSequence = disassemble(sequence, SEQACK_LENGTH);
     auto packedAcknowledgement = disassemble(acknowledgement, SEQACK_LENGTH);
-    
+
     data.insert(data.end(), packedSequence.begin(), packedSequence.end());
     data.insert(data.end(), packedAcknowledgement.begin(), packedAcknowledgement.end());
     data.insert(data.end(), internalData.begin(), internalData.end());
@@ -81,7 +93,7 @@ std::vector<uint8> RRAD::Packet::packed() {
 
 RRAD::Packet RRAD::Packet::acknowledge() {
     Packet packet = Packet();
-    packet.sequence = acknowledgement;
+    packet.sequence = sequence; //gonna use that
     packet.acknowledgement = sequence + internalData.size();
     packet.internalData = std::vector<uint8>(0);
     return packet;

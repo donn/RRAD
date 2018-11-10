@@ -5,7 +5,7 @@ using namespace RRAD;
 #include <iostream>
 
 int main() {
-    Connection c("0.0.0.0", 9001, 0, 0);
+    Connection c("0.0.0.0", 9001, 3000, 0);
 	std::string s = "have fun";
 	//c.write ({});
 
