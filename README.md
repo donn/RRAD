@@ -9,4 +9,4 @@ Some reliability on top of UDP.
 A competent C++17 compiler, mostly POSIX-compliant operating system.
 
 # License
-The existential despair- I mean 3-clause-BSD license. See 'License'.
+The MIT License. Check 'LICENSE'.
