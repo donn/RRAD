@@ -45,6 +45,7 @@ namespace RRAD {
         void forwardRequests(std::string target, std::string ip, uint16 port);
 
         // Object Registration
+        RemoteObject* getObject(JSON id); // 99% of the time it'll already be serialized json
         void registerObject(JSON id, RemoteObject* registree, bool owned = true);
         void destroyObject(JSON id);
         

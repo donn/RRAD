@@ -87,6 +87,17 @@ std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
     return result;
 }
 
+RRAD::RemoteObject* RRAD::Dispatcher::getObject(JSON id) {
+    dictionaryMutex.lock();
+    auto string = id.dump();
+    if (dictionary.find(string) == dictionary.end()) {
+        return NULL;
+    }
+    auto ro = dictionary[id.dump()].second;
+    dictionaryMutex.unlock();
+    return ro;
+}
+
 void RRAD::Dispatcher::registerObject(JSON id, RemoteObject* registree, bool owned) {
     dictionaryMutex.lock();
     dictionary[id.dump()] = std::pair(owned, registree);
