@@ -8,8 +8,11 @@ using namespace RRAD;
 int main() {
     Connection c("0.0.0.0", 9001);
 	std::string s = "Ready to die?";
+    std::vector<uint8> vt(1009, 'H');
+    std::vector<uint8> vh(40, 'A');
+    vt.insert(vt.end(), vh.begin(), vh.end());
 
-	c.write(vectorize(s));
+	c.write(vt);
     std::cout << devectorizeToString(c.read()) << std::endl;
 
 }

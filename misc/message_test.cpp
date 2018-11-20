@@ -33,7 +33,7 @@ int main (){
 
     Message reassembled_msg = Message::unmarshall(raw);
 
-    std::cout << reassembled_msg.isRequest() << '\n';
+    // std::cout << reassembled_msg.isRequest() << '\n';
 
     
     return 0;
