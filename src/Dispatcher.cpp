@@ -133,9 +133,10 @@ void RRAD::Dispatcher::syncLoop() {
 }
 
 void RRAD::Dispatcher::start() {
-    std::thread([&]() {
+    std::thread tr ([&]() {
         syncLoop();
     });
+    tr.detach();
 }
 
 std::vector<RRAD::RemoteObject*> RRAD::Dispatcher::listMine(std::string className) {
