@@ -56,7 +56,7 @@ namespace RRAD {
         // Owner data methods
         std::vector<RemoteObject*> listMine(std::string className);
         Message listRPC(std::string className, std::string targetUser);
-        Message rmi(std::string className, std::string targetUser, JSON id, std::string method, JSON arguments);
+        Message rmiReqMsg(std::string className, std::string targetUser, JSON id, std::string method, JSON arguments);
         JSON communicateRMI(std::string targetIP, uint16 targetPort, Message rmi);
 
         void setUID(std::string newUID);
