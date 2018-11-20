@@ -1,5 +1,5 @@
 CXX = c++
-CXX_FLAGS = -pedantic -g -std=c++17
+CXX_FLAGS = -pedantic -g -std=c++17 -fPIC
 
 SRC_DIR = src
 TEST_DIR = misc

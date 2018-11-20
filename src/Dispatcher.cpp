@@ -176,7 +176,7 @@ RRAD::Message RRAD::Dispatcher::rmiReqMsg(std::string className, std::string tar
 }
 
 JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::Message rmiReqMsg) {
-    std::cout << targetIP << " " << port << std::endl;
+    std::cout << "[RRAD] Communating to " << targetIP << " on " << port << "..." << std::endl;
     if (cm) {
         cm->encodeArguments(&rmiReqMsg.msg_json["operation"]);
     }

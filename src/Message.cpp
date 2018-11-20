@@ -41,8 +41,9 @@ RRAD::Message::Message(){
     *this = Message(req_msg_format);
 }
 RRAD::Message::Message(JSON msg_json){
-    if(!isValidFormat(msg_json))
+    if(!isValidFormat(msg_json)) {
         throw "Invalid.Msg.JSON";
+    }
     this->msg_json = msg_json;
 }
 std::vector<uint8> RRAD::Message::marshall(){

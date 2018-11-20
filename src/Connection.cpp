@@ -24,7 +24,7 @@
 const auto TRUE_MESSAGE_LENGTH = MESSAGE_LENGTH - PACKET_OVERHEAD;
 
 #define i2byteStartBoundary(i) ((i)*TRUE_MESSAGE_LENGTH);
-#define byteStartBoundary2i(bsb) (bsb/TRUE_MESSAGE_LENGTH);
+#define byteStartBoundary2i(bsb) ((bsb)/TRUE_MESSAGE_LENGTH);
 
 RRAD::Connection::Connection(std::string ip, uint16 port, int timeout, uint16 localPort) {
     this->ip = ip;
@@ -54,6 +54,7 @@ std::vector<uint8> RRAD::Connection::read() {
             readdata = socketp->read(&ip, &port);
             socketp->setPeerAddress(ip, port);
             packet = Packet::unpacking(readdata);
+            // std::cout << "Fragment " << i << ": " << RRAD::devectorizeToString(readdata) << std::endl;
             acknowledgement = packet.acknowledge();
         } catch (std::exception& e) {
             std::string eMsg(e.what());
@@ -80,7 +81,7 @@ std::vector<uint8> RRAD::Connection::read() {
         lastAck = acknowledgement.ack();
 
         auto unpackedData = packet.body();
-        
+
         // no need to filter duplicated packets if packets r inserted in the right place
         assembled.insert(std::begin(assembled)+packet.seq(), std::begin(unpackedData), std::end(unpackedData));
 
@@ -137,7 +138,6 @@ void RRAD::Connection::write(std::vector<uint8> data) {
                 end = data.end();
             }
             sendable = std::vector<uint8>(beginning, end);
-            std::cout << RRAD::devectorizeToString(sendable) << std::endl;
 
             newPacket = Packet(sendable, lastPacket);
         } else {
