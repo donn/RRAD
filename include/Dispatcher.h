@@ -11,6 +11,7 @@ namespace RRAD {
     class RemoteObject {
     public:
         JSON listRequest();
+        virtual JSON getID() =0;
         virtual JSON executeRPC(std::string name, JSON arguments) = 0;
         virtual std::string getClassName() {
             return typeid(*this).name();
@@ -46,7 +47,7 @@ namespace RRAD {
 
         // Object Registration
         RemoteObject* getObject(JSON id); // 99% of the time it'll already be serialized json
-        void registerObject(JSON id, RemoteObject* registree, bool owned = true);
+        void registerObject(RemoteObject* registree, bool owned = true);
         void destroyObject(JSON id);
         
         // Start Listeners

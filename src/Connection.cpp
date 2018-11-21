@@ -47,7 +47,7 @@ std::vector<uint8> RRAD::Connection::read() {
 
     SEQACK_T lastAck = 0;
     int retrials = MAX_RETRIALS;
- 
+
     for (int i = 0; i==0 || (retrials+1 > 0 && !packet.isTerminator()); i += 1) {
         Packet acknowledgement;
         try {
@@ -65,7 +65,7 @@ std::vector<uint8> RRAD::Connection::read() {
             }
         }
 
-        double boundary = double(packet.seq())/double(TRUE_MESSAGE_LENGTH); 
+        double boundary = double(packet.seq())/double(TRUE_MESSAGE_LENGTH);
         bool previousPacket = (nearbyint(boundary) == boundary) && boundary < i;
         if (previousPacket){
             i--;
@@ -86,7 +86,7 @@ std::vector<uint8> RRAD::Connection::read() {
         assembled.insert(std::begin(assembled)+packet.seq(), std::begin(unpackedData), std::end(unpackedData));
 
     }
-    
+
     if (retrials == -1) {
         CONNECTION_ERROR("conn.read.retrialsexhausted");
     }
@@ -97,6 +97,7 @@ std::vector<uint8> RRAD::Connection::read() {
 void RRAD::Connection::write(std::vector<uint8> data) {
     int transmissions = data.size() / TRUE_MESSAGE_LENGTH;
     int retrials = MAX_RETRIALS; // total trials for all packets (not per packet)
+    int i;
     if (data.size() % TRUE_MESSAGE_LENGTH) {
         transmissions += 1;
     }
@@ -106,27 +107,31 @@ void RRAD::Connection::write(std::vector<uint8> data) {
 
     std::string newIP;
     uint16 newPort;
-    // handshake: won't retry
+    // handshake: fine, will retry
     Packet initializer = Packet::initializer();
-    socketp->write(initializer.packed());
-    Packet initializerReply;
-    try {
-        readdata = socketp->read(&newIP, &newPort);
-        initializerReply = Packet::unpacking(readdata);
-    } catch (std::exception& e) {
-        std::string eMsg(e.what());
-        if (eMsg == "socket.read.timeout") {
-            CONNECTION_ERROR("conn.handshake.timeout");
-        } else {
-            CONNECTION_ERROR(eMsg);
+    Packet initializerReply = Packet::nack();
+
+    for (i = 0; i < retrials; i++) {
+        socketp->write(initializer.packed());
+        try {
+            readdata = socketp->read(&newIP, &newPort);
+            initializerReply = Packet::unpacking(readdata);
+        } catch (std::exception& e) {
+            std::string eMsg(e.what());
+            if (eMsg == "socket.read.timeout") {
+                continue;
+            } else {
+                CONNECTION_ERROR(eMsg);
+            }
         }
     }
+
     if (!initializer.confirmAcknowledgement(initializerReply)) {
-        CONNECTION_ERROR("conn.deniedHandshake");
+        CONNECTION_ERROR("conn.handshakedenied.retrialsexhausted(" + std::to_string(i) + ")" );
     }
+
     socketp->setPeerAddress(newIP, newPort);
 
-    int i;
         //std::cout << RRAD::devectorizeToString(data) << std::endl;
     for (i = 0; i <= transmissions && (retrials+1 > 0); i += 1) {
         Packet newPacket;
@@ -162,7 +167,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
             }
 
             bool confirmedAcknowledgement = newPacket.confirmAcknowledgement(acknowledgement);
-            double boundary = double(acknowledgement.seq())/double(TRUE_MESSAGE_LENGTH); 
+            double boundary = double(acknowledgement.seq())/double(TRUE_MESSAGE_LENGTH);
             previousAcknowledgment = (nearbyint(boundary) == boundary) && boundary < i;
             if (!confirmedAcknowledgement) {
                 acknowledgement = Packet::nack();

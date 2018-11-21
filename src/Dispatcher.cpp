@@ -60,16 +60,13 @@ std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
     }
 
     if (object["id"] == 0 && object["unixTimestamp"] == 0) {
+        auto mine = listMine(object["class"]);
         auto array = JSON::array();
-        for (auto ro: dictionary) {
-            auto& iterable = *ro.second.second;
-            if (
-                iterable.getClassName() == object["class"]
-                && ro.second.first
-            ) {
-                array.push_back(JSON::parse(ro.first));
-            }
-        }
+
+        std::for_each(mine.begin(), mine.end(), [&](RemoteObject* ro){
+                auto& obj = *ro;
+                array.push_back(obj.getID());
+        });
         return message.generateReply(array);
     }
     if (
@@ -99,9 +96,10 @@ RRAD::RemoteObject* RRAD::Dispatcher::getObject(JSON id) {
     return ro;
 }
 
-void RRAD::Dispatcher::registerObject(JSON id, RemoteObject* registree, bool owned) {
+void RRAD::Dispatcher::registerObject(RemoteObject* registree, bool owned) {
     dictionaryMutex.lock();
-    dictionary[id.dump()] = std::pair(owned, registree);
+    //the below works because of the internal std::map representation of nlohmann JSONs
+    dictionary[(registree->getID()).dump()] = std::pair(owned, registree);
     dictionaryMutex.unlock();
 }
 
@@ -181,7 +179,19 @@ JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::M
         cm->encodeArguments(&rmiReqMsg.msg_json["operation"]);
     }
     auto conn = RRAD::Connection(targetIP, port);
-    conn.write(rmiReqMsg.marshall());
-    auto reply = RRAD::Message::unmarshall(conn.read());
+    try {
+        conn.write(rmiReqMsg.marshall());
+    } catch (std::exception &e) {
+        std::string eMsg(e.what());
+        throw std::runtime_error("rmi.write." + eMsg);
+    }
+    RRAD::Message reply;
+    //where do we handle __ ?
+    try {
+        reply = RRAD::Message::unmarshall(conn.read());
+    } catch (std::exception &e) {
+        std::string eMsg(e.what());
+        throw std::runtime_error("rmi.read." + eMsg);
+    }
     return reply.getArguments();
 }
