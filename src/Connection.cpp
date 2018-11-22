@@ -48,13 +48,13 @@ std::vector<uint8> RRAD::Connection::read() {
     SEQACK_T lastAck = 0;
     int retrials = MAX_RETRIALS;
 
-    for (int i = 0; i==0 || (retrials+1 > 0 && !packet.isTerminator()); i += 1) {
+    for (int i = -1; (retrials+1 > 0) && (i==-1 || !packet.isTerminator()); i += 1) {
         Packet acknowledgement;
         try {
             readdata = socketp->read(&ip, &port);
             socketp->setPeerAddress(ip, port);
             packet = Packet::unpacking(readdata);
-            // std::cout << "Fragment " << i << ": " << RRAD::devectorizeToString(readdata) << std::endl;
+            std::cout << "Fragment " << i << ": " << packet.seq() << std::endl;
             acknowledgement = packet.acknowledge();
         } catch (std::exception& e) {
             std::string eMsg(e.what());
@@ -67,11 +67,14 @@ std::vector<uint8> RRAD::Connection::read() {
 
         double boundary = double(packet.seq())/double(TRUE_MESSAGE_LENGTH);
         bool previousPacket = (nearbyint(boundary) == boundary) && boundary < i;
-        if (previousPacket){
+        if (previousPacket) {
+            std::cerr << "[RRAD] Duplicate packet filtered: " << i << std::endl;
+            std::cerr << "[RRAD] seq: " << packet.seq() << std::endl;
             i--;
         }
 
         if (!previousPacket && packet.seq() != lastAck && !packet.isTerminator()) {
+            std::cerr << "[RRAD] Read: Retrying...(" << retrials << ")" << std::endl;
             i--;
             retrials--;
             continue;
@@ -111,7 +114,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
     Packet initializer = Packet::initializer();
     Packet initializerReply = Packet::nack();
 
-    for (i = 0; i < retrials; i++) {
+    for (i = 0; i < retrials && !initializer.confirmAcknowledgement(initializerReply); i++) {
         socketp->write(initializer.packed());
         try {
             readdata = socketp->read(&newIP, &newPort);
@@ -127,7 +130,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
     }
 
     if (!initializer.confirmAcknowledgement(initializerReply)) {
-        CONNECTION_ERROR("conn.handshakedenied.retrialsexhausted(" + std::to_string(i) + ")" );
+        CONNECTION_ERROR("conn.handshakedenied.retrialsexhausted(" + std::to_string(retrials) + ")" );
     }
 
     socketp->setPeerAddress(newIP, newPort);
@@ -149,6 +152,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
             newPacket = Packet::terminator();
         }
 
+        std::cout << "[RRAD] Sending fragment " << i << ": seq: " << newPacket.seq() << std::endl;
         socketp->write(newPacket.packed());
 
         bool previousAcknowledgment;

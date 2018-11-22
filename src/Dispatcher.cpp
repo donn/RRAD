@@ -40,6 +40,7 @@ void RRAD::Dispatcher::forwardRequests(std::string userName, std::string ip, uin
 std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
     // The forwarding fiasco
     auto recipient = message.msg_json["receiverID"];
+    auto sender = message.msg_json["senderID"];
     if (recipient != userName) {
         if (forwardingEnabled) {
             if (forwardQueues.find(recipient) != forwardQueues.end()) {
@@ -71,16 +72,22 @@ std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
     }
     if (
         dictionary.find(object.dump()) == dictionary.end()
-        || object["ownerID"] != userName
+        || (object["ownerID"] != userName && object["ownerID"] != sender)
+        //allowing the sender to play with the objects he sent (setAccess)
+        //this should be refined
     ) {
         return message.generateReply({"error", "objectNotFound"});
     }
 
     auto& target = *dictionary[object.dump()].second;
+    std::cerr << "[DEVE] Executing " << message.msg_json << " on " <<  target.getID() << std::endl;
     auto result = message.generateReply(target.executeRPC(message.getOperation(), message.getArguments()));
+    //let the objects themselves manage that
+    /*
     if (message.getOperation().find("__") == 0) {
         return std::nullopt;
     }
+    */
     return result;
 }
 
