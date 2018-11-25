@@ -37,7 +37,7 @@ void RRAD::Dispatcher::forwardRequests(std::string userName, std::string ip, uin
     thread.detach();
 }
 
-std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
+RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
     // The forwarding fiasco
     auto recipient = message.msg_json["receiverID"];
     auto sender = message.msg_json["senderID"];
@@ -57,7 +57,15 @@ std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
     auto object = message.getObject();
 
     if (cm) {
-        cm->verifyArguments(&message.msg_json["operation"]);
+        auto operation = message.msg_json["operation"];
+
+        for (auto it = operation["data"].begin(); it != operation["data"].end(); ++it) {
+            if (it.key().find("RRAD::") == 0) {
+                operation["data"].erase(it.key());
+            }
+        }
+
+        cm->verifyArguments(sender, &operation);
     }
 
     if (object["id"] == 0 && object["unixTimestamp"] == 0) {
@@ -73,16 +81,23 @@ std::optional<RRAD::Message> RRAD::Dispatcher::doOperation(Message message) {
     if (
         dictionary.find(object.dump()) == dictionary.end()
         || (object["ownerID"] != userName && object["ownerID"] != sender)
-        //allowing the sender to play with the objects he sent (setAccess)
-        //this should be refined
+        // Q: allowing the sender to play with the objects he sent (setAccess)
+        // this should be refined
+        // A: Do not see the need to refine. This is intended behavior.
     ) {
         return message.generateReply({"error", "objectNotFound"});
     }
 
     auto& target = *dictionary[object.dump()].second;
-    std::cerr << "[DEVE] Executing " << message.msg_json << " on " <<  target.getID() << std::endl;
+    
+    #ifdef _DEBUG
+    std::cout << "[DEVE] Executing " << message.msg_json.dump(4) << std::endl;
+    #endif
+    
     auto result = message.generateReply(target.executeRPC(message.getOperation(), message.getArguments()));
-    //let the objects themselves manage that
+
+    // N: let the objects themselves manage that
+    // NB: i mean... sure
     /*
     if (message.getOperation().find("__") == 0) {
         return std::nullopt;
@@ -123,10 +138,12 @@ void RRAD::Dispatcher::syncLoop() {
         Message request;
         try {
             request = Message::getRequest(cn);
+
+            request.msg_json["operation"]["data"]["RRAD::senderIP"] = cn->ip;
+            request.msg_json["operation"]["data"]["RRAD::senderUserName"] = request.msg_json["senderID"];
+
             auto reply = doOperation(request);
-            if (reply.has_value()) {
-                cn->write(reply.value().marshall());
-            }
+            cn->write(reply.marshall());
         } catch (const char* err) {
             std::cerr << "[RRAD] Failed to honor request from " << cn->ip << ": " << err << ": Dump" << std::endl;
             if (request.msg_json["senderID"] != "string") {
@@ -168,7 +185,7 @@ RRAD::Message RRAD::Dispatcher::listRPC(std::string className, std::string targe
     message.msg_json["object"]["id"] = 0;
     message.msg_json["object"]["class"] = className;
     message.msg_json["operation"]["name"] = "__DEVE__LIST";
-    message.msg_json["operation"]["data"] = {};
+    message.msg_json["operation"]["data"] = JSON(JSON::value_t::object);
     return message;
 }
 
@@ -176,29 +193,30 @@ RRAD::Message RRAD::Dispatcher::rmiReqMsg(std::string className, std::string tar
     auto message = listRPC(className, targetUser);
     message.msg_json["object"] = id;
     message.msg_json["operation"]["name"] = method;
-    message.msg_json["operation"]["data"] = arguments;
+    if (arguments.is_null()) {
+        message.msg_json["operation"]["data"] = JSON(JSON::value_t::object);
+    } else {
+        message.msg_json["operation"]["data"] = arguments;
+    }
     return message;
 }
 
 JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::Message rmiReqMsg) {
     std::cout << "[RRAD] Communating to " << targetIP << " on " << port << "..." << std::endl;
+    
     if (cm) {
         cm->encodeArguments(&rmiReqMsg.msg_json["operation"]);
     }
+
+    // Removed error handling, just propagate it over to the UI. Also I hate std::runtime_error
+
     auto conn = RRAD::Connection(targetIP, port);
-    try {
-        conn.write(rmiReqMsg.marshall());
-    } catch (std::exception &e) {
-        std::string eMsg(e.what());
-        throw std::runtime_error("rmi.write." + eMsg);
-    }
+    conn.write(rmiReqMsg.marshall());
+
+    // Q: where do we handle __ ?
+    // A: good question. here should be good, i think
+
     RRAD::Message reply;
-    //where do we handle __ ?
-    try {
-        reply = RRAD::Message::unmarshall(conn.read());
-    } catch (std::exception &e) {
-        std::string eMsg(e.what());
-        throw std::runtime_error("rmi.read." + eMsg);
-    }
+    reply = RRAD::Message::unmarshall(conn.read());
     return reply.getArguments();
 }

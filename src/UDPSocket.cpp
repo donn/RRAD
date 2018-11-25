@@ -20,7 +20,7 @@
 	std::cerr << "[RRAD] ERROR: "; \
 	SOCKET_DESCRIPTOR(std::cerr); \
 	std::cerr << message << std::endl; \
-	throw std::runtime_error(message); \
+	throw message; \
 } while (0);
 
 #ifndef _VERBOSE_UDPSOCKET_DEBUG
@@ -94,7 +94,7 @@ void RRAD::UDPSocket::write(std::vector<uint8> buffer){
 
 	if (msgLength > MESSAGE_LENGTH) {
 		std::cerr << "Write too large." << std::endl;
-		throw std::runtime_error("write.tooLargeForRRAD");
+		throw "socket.write.tooLargeForRRAD";
 	} else {
 		int number_bytes_sent = sendto(sock, &buffer[0], msgLength, 0, peerAddr_cast, sizeof(struct sockaddr));
 		if (_VERBOSE_UDPSOCKET_DEBUG) {
@@ -104,14 +104,14 @@ void RRAD::UDPSocket::write(std::vector<uint8> buffer){
 		if (number_bytes_sent < 0) {
 			switch(errno){
 				case EMSGSIZE:
-					SOCKET_ERROR("write.tooLargeForSocket");
+					SOCKET_ERROR("socket.write.tooLargeForSocket");
 					break;
 					//more errors here as needed
 				default:
-					SOCKET_ERROR("write.unknown");
+					SOCKET_ERROR("socket.write.unknown");
 			}
 		} else if (number_bytes_sent < msgLength) {
-			SOCKET_ERROR("write.partial");
+			SOCKET_ERROR("socket.write.partial");
 		}
 	}
 }
@@ -154,7 +154,7 @@ std::vector<uint8> RRAD::UDPSocket::read(std::string *newPeerIP, uint16 *newPeer
 				break;
 			default:
 				std::cerr << "Error code: " << errno << std::endl;
-				SOCKET_ERROR("read.unknown"); 
+				SOCKET_ERROR("socket.read.unknown"); 
 		}
 	}
 

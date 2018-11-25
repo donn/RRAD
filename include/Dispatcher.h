@@ -21,7 +21,7 @@ namespace RRAD {
     class CryptoModule {
     public:
         virtual void encodeArguments(JSON* json) = 0;
-        virtual void verifyArguments(JSON* json) = 0;
+        virtual void verifyArguments(std::string userName, JSON* json) = 0;
     };
 
     class Dispatcher {
@@ -37,7 +37,7 @@ namespace RRAD {
         
         uint64 requestCounter = 0;
         
-        std::optional<RRAD::Message> doOperation(Message message); 
+        RRAD::Message doOperation(Message message); 
     public:
         Dispatcher(std::string userName, uint16 port = 20000, bool forwardingEnabled = false);
 

@@ -84,10 +84,6 @@ RRAD::Message RRAD::Message::getRequest(Connection *connection){
     if (!request.msg_json["request"]) {
         throw "message.notRequest";
     }
-
-    // Buncha hacks
-    request.msg_json["operation"]["data"]["__RRAD__INTERNAL__senderIP"] = connection->ip; // Hack lmao
-    request.msg_json["operation"]["data"]["userName"] = request.msg_json["senderID"];
     return request;
 }
 

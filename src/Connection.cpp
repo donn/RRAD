@@ -18,7 +18,7 @@
 	std::cerr << "[RRAD] ERROR: "; \
 	CONNECTION_DESCRIPTOR(std::cerr); \
 	std::cerr << ": " << message << std::endl; \
-	throw std::runtime_error(message); \
+	throw message; \
 } while (0);
 
 const auto TRUE_MESSAGE_LENGTH = MESSAGE_LENGTH - PACKET_OVERHEAD;
@@ -54,7 +54,6 @@ std::vector<uint8> RRAD::Connection::read() {
             readdata = socketp->read(&ip, &port);
             socketp->setPeerAddress(ip, port);
             packet = Packet::unpacking(readdata);
-            std::cout << "Fragment " << i << ": " << packet.seq() << std::endl;
             acknowledgement = packet.acknowledge();
         } catch (std::exception& e) {
             std::string eMsg(e.what());
@@ -135,7 +134,8 @@ void RRAD::Connection::write(std::vector<uint8> data) {
 
     socketp->setPeerAddress(newIP, newPort);
 
-        //std::cout << RRAD::devectorizeToString(data) << std::endl;
+    //std::cout << RRAD::devectorizeToString(data) << std::endl;
+
     for (i = 0; i <= transmissions && (retrials+1 > 0); i += 1) {
         Packet newPacket;
         Packet acknowledgement;
@@ -152,7 +152,6 @@ void RRAD::Connection::write(std::vector<uint8> data) {
             newPacket = Packet::terminator();
         }
 
-        std::cout << "[RRAD] Sending fragment " << i << ": seq: " << newPacket.seq() << std::endl;
         socketp->write(newPacket.packed());
 
         bool previousAcknowledgment;
@@ -165,7 +164,6 @@ void RRAD::Connection::write(std::vector<uint8> data) {
                 if (eMsg == "socket.read.timeout") {
                     acknowledgement = Packet::nack();
                 } else {
-                    std::cerr << "lool?";
                     CONNECTION_ERROR(eMsg);
                 }
             }
@@ -187,7 +185,7 @@ void RRAD::Connection::write(std::vector<uint8> data) {
         lastPacket = newPacket;
     }
     if (retrials == -1 && ( !lastPacket.has_value() || (lastPacket.has_value() && !lastPacket.value().isTerminator()))) {
-        CONNECTION_ERROR("conn.send.retrialsexhausted");
+        CONNECTION_ERROR("conn.write.retrialsexhausted");
     }
 }
 
