@@ -2,6 +2,10 @@
 
 #include <iostream>
 
+#ifndef _VERBOSE_DISPATCHER
+#define _VERBOSE_DISPATCHER 0
+#endif
+
 RRAD::Dispatcher::Dispatcher(std::string userName, uint16 port, bool forwardingEnabled) {
     this->userName = userName;
     port = port;
@@ -90,10 +94,6 @@ RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
 
     auto& target = *dictionary[object.dump()].second;
     
-    #ifdef _DEBUG
-    std::cout << "[DEVE] Executing " << message.msg_json.dump(4) << std::endl;
-    #endif
-    
     auto result = message.generateReply(target.executeRPC(message.getOperation(), message.getArguments()));
 
     // N: let the objects themselves manage that
@@ -139,15 +139,24 @@ void RRAD::Dispatcher::syncLoop() {
         try {
             request = Message::getRequest(cn);
 
+            #if _VERBOSE_DISPATCHER
+            std::cout << "[RRAD] Got request: " << request.msg_json.dump(4) << std::endl << std::endl;
+            #endif
+
             request.msg_json["operation"]["data"]["RRAD::senderIP"] = cn->ip;
             request.msg_json["operation"]["data"]["RRAD::senderUserName"] = request.msg_json["senderID"];
 
             auto reply = doOperation(request);
+            
+            #if _VERBOSE_DISPATCHER
+            std::cout << "[RRAD] Sending reply: " << reply.msg_json.dump(4) << std::endl << std::endl;
+            #endif
             cn->write(reply.marshall());
+
         } catch (const char* err) {
             std::cerr << "[RRAD] Failed to honor request from " << cn->ip << ": " << err << ": Dump" << std::endl;
             if (request.msg_json["senderID"] != "string") {
-                std::cout << request.msg_json.dump();
+                std::cout << request.msg_json.dump(4);
             }
             std::cout << std::endl << std::endl;
         }
@@ -177,6 +186,7 @@ std::vector<RRAD::RemoteObject*> RRAD::Dispatcher::listMine(std::string classNam
 
 RRAD::Message RRAD::Dispatcher::listRPC(std::string className, std::string targetUser) {
     auto message = RRAD::Message();
+    message.msg_json["request"] = true;
     message.msg_json["senderID"] = userName;
     message.msg_json["receiverID"] = targetUser;
     message.msg_json["requestID"] = requestCounter++;
@@ -185,7 +195,7 @@ RRAD::Message RRAD::Dispatcher::listRPC(std::string className, std::string targe
     message.msg_json["object"]["id"] = 0;
     message.msg_json["object"]["class"] = className;
     message.msg_json["operation"]["name"] = "__DEVE__LIST";
-    message.msg_json["operation"]["data"] = JSON(JSON::value_t::object);
+    message.msg_json["operation"]["data"] = EmptyJSO;
     return message;
 }
 
@@ -194,7 +204,7 @@ RRAD::Message RRAD::Dispatcher::rmiReqMsg(std::string className, std::string tar
     message.msg_json["object"] = id;
     message.msg_json["operation"]["name"] = method;
     if (arguments.is_null()) {
-        message.msg_json["operation"]["data"] = JSON(JSON::value_t::object);
+        message.msg_json["operation"]["data"] = EmptyJSO;
     } else {
         message.msg_json["operation"]["data"] = arguments;
     }
@@ -202,13 +212,13 @@ RRAD::Message RRAD::Dispatcher::rmiReqMsg(std::string className, std::string tar
 }
 
 JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::Message rmiReqMsg) {
-    std::cout << "[RRAD] Communating to " << targetIP << " on " << port << "..." << std::endl;
     
     if (cm) {
         cm->encodeArguments(&rmiReqMsg.msg_json["operation"]);
     }
-
-    // Removed error handling, just propagate it over to the UI. Also I hate std::runtime_error
+    #if _VERBOSE_DISPATCHER
+    std::cout << "[RRAD] Sending request: " << rmiReqMsg.msg_json.dump(4) << std::endl << std::endl;
+    #endif
 
     auto conn = RRAD::Connection(targetIP, port);
     conn.write(rmiReqMsg.marshall());
@@ -218,5 +228,8 @@ JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::M
 
     RRAD::Message reply;
     reply = RRAD::Message::unmarshall(conn.read());
+    #if _VERBOSE_DISPATCHER
+    std::cout << "[RRAD] Received reply: " << reply.msg_json.dump(4) << std::endl << std::endl;
+    #endif
     return reply.getArguments();
 }

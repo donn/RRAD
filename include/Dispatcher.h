@@ -7,6 +7,8 @@
 #include <queue>
 #include <optional>
 
+#define EmptyJSO JSON(JSON::value_t::object)
+
 namespace RRAD {
     class RemoteObject {
     public:

@@ -6,7 +6,6 @@
 JSON req_msg_format = R"(
 {
     "senderID": "string",
-    "senderPW": "string",
     "receiverID": "string",
     "requestID": 1,
     "request": true,
@@ -90,8 +89,8 @@ RRAD::Message RRAD::Message::getRequest(Connection *connection){
 RRAD::Message RRAD::Message::generateReply(JSON returnData){
     //consider a later size optimization by removing unncessary fields
     Message reply(msg_json);
-    reply.msg_json["reply"] = false;
-    reply.msg_json["operation"]["data"] = returnData;
+    reply.msg_json["request"] = false;
+    reply.msg_json["operation"]["data"]["result"] = returnData;
 
     return reply;
 }
