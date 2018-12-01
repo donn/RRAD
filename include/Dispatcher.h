@@ -35,8 +35,14 @@ namespace RRAD {
         uint16 port;
 
         std::string userName;
+        uint8 usernameSet = 0;
+
+        std::optional<std::string> forwarderIP;
+        uint16 forwarderPort = 0;
+        uint8 forwarderSet = 0;
+
         bool forwardingEnabled;
-        
+
         uint64 requestCounter = 0;
         
         RRAD::Message doOperation(Message message); 
@@ -45,7 +51,7 @@ namespace RRAD {
 
         CryptoModule* cm;
     
-        void forwardRequests(std::string target, std::string ip, uint16 port);
+        void forwardRequests(std::string target, std::string ip);
 
         // Object Registration
         RemoteObject* getObject(JSON id); // 99% of the time it'll already be serialized json
@@ -63,6 +69,7 @@ namespace RRAD {
         JSON communicateRMI(std::string targetIP, uint16 targetPort, Message rmi);
 
         void setUID(std::string newUID);
+        void setForwarder(std::string forwarder, uint16 forwarderPort);
         std::string getUID() { return userName; }
 
         static Dispatcher singleton;

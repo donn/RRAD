@@ -16,23 +16,38 @@ RRAD::Dispatcher::Dispatcher(std::string userName, uint16 port, bool forwardingE
 }
 
 void RRAD::Dispatcher::setUID(std::string newUID) {
-    static int changedOnce = 0;
     if (userName != newUID) {
-        if (changedOnce++) {
+        if (usernameSet++) {
             throw "dispatcher.userNameAlreadySet";
         }
         userName = newUID;
     }
 }
 
-void RRAD::Dispatcher::forwardRequests(std::string userName, std::string ip, uint16 port) {
+void RRAD::Dispatcher::setForwarder(std::string newForwarderIP, uint16 newPort) {
+    if (
+        (forwarderIP.has_value() && forwarderIP.value() != newForwarderIP)
+        || (newPort != forwarderPort)
+    ) {
+        if (forwarderSet++) {
+            throw "dispatcher.forwarderAlreadySet";
+        }
+        forwarderIP = newForwarderIP;
+    }
+}
+
+
+void RRAD::Dispatcher::forwardRequests(std::string userName, std::string ip) {
     std::thread thread = std::thread([&]() {
-        auto cn = RRAD::Connection(ip, port);
         auto& forwardQueue = forwardQueues[userName];
         try {
             while (!forwardQueue.empty()) {
                 auto forwardable = forwardQueue.front();
-                cn.write(forwardable.marshall());
+
+                auto conn = RRAD::Connection(ip, forwardable.msg_json["operation"]["data"]["RRAD::targetPort"]);
+
+                conn.write(forwardable.marshall());
+                conn.read();
             }
         } catch (const char* error) {
             std::cerr << "[RRAD] Unable to forward some messages to " << userName << " on " << ip << ":" << port << ", retrying on next authentication." << std::endl;
@@ -43,6 +58,7 @@ void RRAD::Dispatcher::forwardRequests(std::string userName, std::string ip, uin
 
 RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
     // The forwarding fiasco
+    // If the current request is a forward request
     auto recipient = message.msg_json["receiverID"];
     auto sender = message.msg_json["senderID"];
     if (recipient != userName) {
@@ -56,6 +72,9 @@ RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
             return message.generateReply({"error", "cacheingUnsupported"});
         }
     }
+
+    // Forward requests for a communication (asynchronous)
+    forwardRequests(message.msg_json["senderID"], message.msg_json["operation"]["data"]["RRAD::senderIP"]);
 
     // Request realm
     auto object = message.getObject();
@@ -220,16 +239,29 @@ JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::M
     std::cout << "[RRAD] Sending request: " << rmiReqMsg.msg_json.dump(4) << std::endl << std::endl;
     #endif
 
+    rmiReqMsg.msg_json["operation"]["data"]["RRAD::targetIP"] = targetIP; 
+    rmiReqMsg.msg_json["operation"]["data"]["RRAD::targetPort"] = port; 
+
     auto conn = RRAD::Connection(targetIP, port);
-    conn.write(rmiReqMsg.marshall());
+    auto marshalled = rmiReqMsg.marshall();
 
-    // Q: where do we handle __ ?
-    // A: good question. here should be good, i think
+    try {
+        conn.write(marshalled);
+    } catch (const char *err) {
+        if ((std::string(err) == std::string("conn.write.retrialsexhausted")) && forwarderIP.has_value()) {
+            conn = RRAD::Connection(forwarderIP.value(), forwarderPort);
+            marshalled = rmiReqMsg.marshall();
+            conn.write(marshalled);
+        } else {
+            throw err;
+        }
+    }
 
-    RRAD::Message reply;
-    reply = RRAD::Message::unmarshall(conn.read());
+    auto reply = RRAD::Message::unmarshall(conn.read());
+
     #if _VERBOSE_DISPATCHER
     std::cout << "[RRAD] Received reply: " << reply.msg_json.dump(4) << std::endl << std::endl;
     #endif
+
     return reply.getArguments();
 }
