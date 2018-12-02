@@ -39,17 +39,23 @@ void RRAD::Dispatcher::setForwarder(std::string newForwarderIP, uint16 newForwar
 
 
 void RRAD::Dispatcher::forwardRequests(std::string userName, std::string ip) {
-    std::thread thread = std::thread([&]() {
+    std::thread thread = std::thread([=]() {
         if (forwardQueues.find(userName) != forwardQueues.end()) {
-            auto& forwardQueue = forwardQueues[userName];
+            auto& entry = forwardQueues[userName];
+            std::lock_guard<std::mutex> lg(entry.first);
+            auto& forwardQueue = entry.second;
             try {
                 while (!forwardQueue.empty()) {
-                    auto forwardable = forwardQueue.front();
+                    Message forwardable = forwardQueue.front();
+                    auto opData = forwardable.msg_json["operation"]["data"];
+                    uint16 targetPort = opData["RRAD::targetPort"];
 
-                    auto conn = RRAD::Connection(ip, forwardable.msg_json["operation"]["data"]["RRAD::targetPort"]);
+                    auto conn = RRAD::Connection(ip, targetPort);
 
                     conn.write(forwardable.marshall());
                     conn.read();
+
+                    forwardQueue.pop();
                 }
             } catch (const char* error) {
                 std::cerr << "[RRAD] Unable to forward some messages to " << userName << " on " << ip << ":" << port << ", retrying on next authentication." << std::endl;
@@ -66,10 +72,9 @@ RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
     auto sender = message.msg_json["senderID"];
     if (recipient != userName) {
         if (forwardingEnabled) {
-            if (forwardQueues.find(recipient) == forwardQueues.end()) {
-                forwardQueues[recipient] = std::queue<RRAD::Message>();
-            }
-            forwardQueues[recipient].push(message);
+            forwardQueues[recipient].first.lock();
+            forwardQueues[recipient].second.push(message);
+            forwardQueues[recipient].first.unlock();
             #if _VERBOSE_DISPATCHER
             std::cout << "[RRAD] Cached message for " << recipient << std::endl;
             #endif
@@ -132,22 +137,23 @@ RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
 }
 
 RRAD::RemoteObject* RRAD::Dispatcher::getObject(JSON id) {
-    dictionaryMutex.lock();
-    std::cerr << id << std::endl;
+    RRAD::RemoteObject* returnValue;
     auto string = id.dump();
+    std::lock_guard<std::mutex> lg(dictionaryMutex);
+
     if (dictionary.find(string) == dictionary.end()) {
-        return NULL;
+        returnValue = NULL;
+    } else {
+        returnValue = dictionary[id.dump()].second;
     }
-    auto ro = dictionary[id.dump()].second;
-    dictionaryMutex.unlock();
-    return ro;
+    return returnValue;
 }
 
 void RRAD::Dispatcher::registerObject(RemoteObject* registree, bool owned) {
-    dictionaryMutex.lock();
+    std::lock_guard<std::mutex> lg(dictionaryMutex);
     //the below works because of the internal std::map representation of nlohmann JSONs
+    //thats not an excuse i hate this
     dictionary[(registree->getID()).dump()] = std::pair(owned, registree);
-    dictionaryMutex.unlock();
 }
 
 void RRAD::Dispatcher::destroyObject(JSON id) {
@@ -260,6 +266,7 @@ JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::M
         if (
             forwarderIP.has_value()
             && (rmiReqMsg.getOperation().find("__") == 0)
+            && targetIP != forwarderIP.value() // Don't forward requests TO the forwarder that doesnt make sense - Barack Obama
         ) {
             forward = true;
         }
@@ -273,9 +280,7 @@ JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::M
         
         reply = RRAD::Message::unmarshall(conn.read());
 
-        #if _VERBOSE_DISPATCHER
-        std::cout << "[RRAD] Request forwarded. " << std::endl << std::endl;
-        #endif
+        std::cout << "[RRAD] Request to " << targetIP << ":" << port << " forwarded. " << std::endl << std::endl;
     } else {
         
         reply = RRAD::Message::unmarshall(conn.read()); 

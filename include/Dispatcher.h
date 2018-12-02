@@ -31,7 +31,7 @@ namespace RRAD {
     class Dispatcher {
         std::mutex dictionaryMutex;
         std::map<std::string, std::pair<bool, RemoteObject*> >dictionary;
-        std::map<std::string, std::queue<Message> > forwardQueues;
+        std::map<std::string, std::pair<std::mutex, std::queue<Message> > > forwardQueues;
 
         Connection connection;
         uint16 port;
