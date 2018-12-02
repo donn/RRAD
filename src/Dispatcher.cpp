@@ -257,8 +257,6 @@ JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::M
     auto conn = RRAD::Connection(targetIP, port);
     auto marshalled = rmiReqMsg.marshall();
 
-    std::cout << forwarderIP.has_value() << " : " << rmiReqMsg.getOperation() << std::endl;
-
     auto forward = false;
     try {
         conn.write(marshalled);
