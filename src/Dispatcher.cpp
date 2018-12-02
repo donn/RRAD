@@ -24,33 +24,36 @@ void RRAD::Dispatcher::setUID(std::string newUID) {
     }
 }
 
-void RRAD::Dispatcher::setForwarder(std::string newForwarderIP, uint16 newPort) {
+void RRAD::Dispatcher::setForwarder(std::string newForwarderIP, uint16 newForwarderPort) {
     if (
         (forwarderIP.has_value() && forwarderIP.value() != newForwarderIP)
-        || (newPort != forwarderPort)
+        || (newForwarderPort != forwarderPort)
     ) {
         if (forwarderSet++) {
             throw "dispatcher.forwarderAlreadySet";
         }
         forwarderIP = newForwarderIP;
+        forwarderPort = newForwarderPort;
     }
 }
 
 
 void RRAD::Dispatcher::forwardRequests(std::string userName, std::string ip) {
     std::thread thread = std::thread([&]() {
-        auto& forwardQueue = forwardQueues[userName];
-        try {
-            while (!forwardQueue.empty()) {
-                auto forwardable = forwardQueue.front();
+        if (forwardQueues.find(userName) != forwardQueues.end()) {
+            auto& forwardQueue = forwardQueues[userName];
+            try {
+                while (!forwardQueue.empty()) {
+                    auto forwardable = forwardQueue.front();
 
-                auto conn = RRAD::Connection(ip, forwardable.msg_json["operation"]["data"]["RRAD::targetPort"]);
+                    auto conn = RRAD::Connection(ip, forwardable.msg_json["operation"]["data"]["RRAD::targetPort"]);
 
-                conn.write(forwardable.marshall());
-                conn.read();
+                    conn.write(forwardable.marshall());
+                    conn.read();
+                }
+            } catch (const char* error) {
+                std::cerr << "[RRAD] Unable to forward some messages to " << userName << " on " << ip << ":" << port << ", retrying on next authentication." << std::endl;
             }
-        } catch (const char* error) {
-            std::cerr << "[RRAD] Unable to forward some messages to " << userName << " on " << ip << ":" << port << ", retrying on next authentication." << std::endl;
         }
     });
     thread.detach();
@@ -63,10 +66,13 @@ RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
     auto sender = message.msg_json["senderID"];
     if (recipient != userName) {
         if (forwardingEnabled) {
-            if (forwardQueues.find(recipient) != forwardQueues.end()) {
+            if (forwardQueues.find(recipient) == forwardQueues.end()) {
                 forwardQueues[recipient] = std::queue<RRAD::Message>();
             }
             forwardQueues[recipient].push(message);
+            #if _VERBOSE_DISPATCHER
+            std::cout << "[RRAD] Cached message for " << recipient << std::endl;
+            #endif
             return message.generateReply({"cached", "cached"});
         } else {
             return message.generateReply({"error", "cacheingUnsupported"});
@@ -245,23 +251,39 @@ JSON RRAD::Dispatcher::communicateRMI(std::string targetIP, uint16 port, RRAD::M
     auto conn = RRAD::Connection(targetIP, port);
     auto marshalled = rmiReqMsg.marshall();
 
+    std::cout << forwarderIP.has_value() << " : " << rmiReqMsg.getOperation() << std::endl;
+
+    auto forward = false;
     try {
         conn.write(marshalled);
     } catch (const char *err) {
-        if ((std::string(err) == std::string("conn.write.retrialsexhausted")) && forwarderIP.has_value()) {
-            conn = RRAD::Connection(forwarderIP.value(), forwarderPort);
-            marshalled = rmiReqMsg.marshall();
-            conn.write(marshalled);
-        } else {
-            throw err;
+        if (
+            forwarderIP.has_value()
+            && (rmiReqMsg.getOperation().find("__") == 0)
+        ) {
+            forward = true;
         }
     }
 
-    auto reply = RRAD::Message::unmarshall(conn.read());
+    Message reply;
 
-    #if _VERBOSE_DISPATCHER
-    std::cout << "[RRAD] Received reply: " << reply.msg_json.dump(4) << std::endl << std::endl;
-    #endif
+    if (forward) {
+        auto conn = RRAD::Connection(forwarderIP.value(), forwarderPort);
+        conn.write(marshalled);
+        
+        reply = RRAD::Message::unmarshall(conn.read());
+
+        #if _VERBOSE_DISPATCHER
+        std::cout << "[RRAD] Request forwarded. " << std::endl << std::endl;
+        #endif
+    } else {
+        
+        reply = RRAD::Message::unmarshall(conn.read()); 
+
+        #if _VERBOSE_DISPATCHER
+        std::cout << "[RRAD] Received reply: " << reply.msg_json.dump(4) << std::endl << std::endl;
+        #endif
+    }
 
     return reply.getArguments();
 }

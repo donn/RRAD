@@ -18,6 +18,8 @@ namespace RRAD {
         virtual std::string getClassName() {
             return typeid(*this).name();
         };
+
+        virtual ~RemoteObject() {}
     };
 
     class CryptoModule {

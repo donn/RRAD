@@ -55,12 +55,11 @@ std::vector<uint8> RRAD::Connection::read() {
             socketp->setPeerAddress(ip, port);
             packet = Packet::unpacking(readdata);
             acknowledgement = packet.acknowledge();
-        } catch (std::exception& e) {
-            std::string eMsg(e.what());
-            if (eMsg == "socket.read.timeout") {
+        } catch (const char* e) {
+            if (std::string(e) == "socket.read.timeout") {
                 packet = Packet::nack();
             } else {
-                CONNECTION_ERROR(eMsg);
+                CONNECTION_ERROR(e);
             }
         }
 
@@ -118,18 +117,18 @@ void RRAD::Connection::write(std::vector<uint8> data) {
         try {
             readdata = socketp->read(&newIP, &newPort);
             initializerReply = Packet::unpacking(readdata);
-        } catch (std::exception& e) {
-            std::string eMsg(e.what());
-            if (eMsg == "socket.read.timeout") {
+        } catch (const char* e) {
+            if (std::string(e) == std::string("socket.read.timeout")) {
                 continue;
             } else {
-                CONNECTION_ERROR(eMsg);
+                CONNECTION_ERROR(e);
             }
         }
     }
 
     if (!initializer.confirmAcknowledgement(initializerReply)) {
-        CONNECTION_ERROR("conn.handshakedenied.retrialsexhausted(" + std::to_string(retrials) + ")" );
+        auto string = std::string("conn.handshakedenied.retrialsexhausted(") + std::to_string(retrials) + ")";
+        CONNECTION_ERROR(string.c_str());
     }
 
     socketp->setPeerAddress(newIP, newPort);
@@ -159,12 +158,11 @@ void RRAD::Connection::write(std::vector<uint8> data) {
             try {
                 readdata = socketp->read();
                 acknowledgement = Packet::unpacking(readdata);
-            } catch (std::exception& e) {
-                std::string eMsg(e.what());
-                if (eMsg == "socket.read.timeout") {
+            } catch (const char* e) {
+                if (std::string(e) == "socket.read.timeout") {
                     acknowledgement = Packet::nack();
                 } else {
-                    CONNECTION_ERROR(eMsg);
+                    CONNECTION_ERROR(e);
                 }
             }
 
@@ -196,14 +194,14 @@ void RRAD::Connection::listen(std::function<void(Connection*)> operativeLoop) {
         std::vector<uint8> data;
         try {
             data = socketp->read(&ip, &port);
-        } catch (std::exception& exception) {
+        } catch (const char* e) {
             continue;
         }
 
         Packet packet;
         try {
             packet = Packet::unpacking(data);
-        } catch (std::exception& exception) {
+        } catch (const char* e) {
             std::cerr << "Packet unmarshaling failure, ignoring." << std::endl;
             continue;
         }
