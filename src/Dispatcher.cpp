@@ -80,7 +80,9 @@ RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
             #endif
             return message.generateReply({"cached", "cached"});
         } else {
-            return message.generateReply({"error", "cacheingUnsupported"});
+            JSON errorMsg;
+            errorMsg["error"] = "invalidReceipientUsername";
+            return message.generateReply(errorMsg);
         }
     }
 
@@ -119,7 +121,9 @@ RRAD::Message RRAD::Dispatcher::doOperation(Message message) {
         // this should be refined
         // A: Do not see the need to refine. This is intended behavior.
     ) {
-        return message.generateReply({"error", "objectNotFound"});
+        JSON errorMsg;
+        errorMsg["error"] = "invalidRecipientUsername";
+        return message.generateReply(errorMsg);
     }
 
     auto& target = *dictionary[object.dump()].second;
